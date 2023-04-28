@@ -1,5 +1,4 @@
 #include "MCP23017.h"
-#include <stdio.h>
 // registers
 #define REG_IODIRA 0x00 // Direction Register A
 #define REG_IPOLA 0x02  // Polarity Register A

@@ -1,6 +1,6 @@
 #include "ForceGauge.h"
 #include <math.h>
-#include <propeller2.h>
+#include <propeller.h>
 
 #define CONFIG_0 0x00 // Configuration register 0
 #define CONFIG_1 0x01 // Configuration register 1
@@ -50,12 +50,13 @@ static uint8_t read_register(ForceGauge *forceGauge, uint8_t reg)
     return temp;
 }
 
+// Can be updated to use simpleSerial.spin2? inside spin folder of flexprop
 static void continuous_data(void *arg)
 {
     ForceGauge *forceGauge = (ForceGauge *)arg;
     int rx = forceGauge->rx;
     int tx = forceGauge->tx;
-    int data;
+    int data = 0;
     int index = 0;
     int delay = (_clockfreq() / BAUD) / 2;
     int spmode = P_ASYNC_RX | P_INVERT_IN;
@@ -103,7 +104,7 @@ static void continuous_data(void *arg)
  * @param tx serial tx pin
  * @return Error: FORCEGAUGE_NOT_RESPONDING if communications fails, FORCEEGAUGE_COG_FAIL if cog fails to start, SUCCESS otherwise.
  */
-Error force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
+bool force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
 {
     forceGauge->rx = rx;
     forceGauge->tx = tx;
@@ -127,7 +128,7 @@ Error force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
     int temp;
     if ((temp = read_register(forceGauge, CONFIG_1)) != CONFIG_DATA1)
     {
-        return FORCEGAUGE_NOT_RESPONDING;
+        return false;
     }
     /*    else if ((temp = read_register(forceGauge, CONFIG_2)) != CONFIG_DATA2)
         {
@@ -146,14 +147,12 @@ Error force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
     _waitms(100);
     forceGauge->serial.tx(0x55);
     forceGauge->serial.tx(0x08);
-    _waitms(500);
-    forceGauge->serial.stop();
     forceGauge->cogid = _cogstart_C(continuous_data, forceGauge, &force_stack[0], sizeof(long) * FORCE_MEMORY_SIZE);
     if (forceGauge->cogid <= 0)
     {
-        return FORCEGAUGE_COG_FAIL;
+        return false;
     }
-    return SUCCESS;
+    return true;
 }
 
 void force_gauge_stop(ForceGauge *forceGauge)

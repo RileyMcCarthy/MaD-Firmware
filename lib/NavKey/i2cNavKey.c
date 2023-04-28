@@ -13,7 +13,6 @@
 //
 
 #include "i2cNavKey.h"
-#include <stdio.h>
 enum I2C_Register
 {
   REG_GCONF = 0x00,

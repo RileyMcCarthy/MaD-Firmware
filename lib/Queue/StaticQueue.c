@@ -8,7 +8,7 @@ void queue_init(StaticQueue *queue, void *buf, int max_size, int item_size) {
     queue->rear = 0;
     queue->_lock = _locknew();
     if (queue->_lock ==  -1)
-        printf("Error: Could not create lock\n");
+        return;
 }
 
 bool queue_push(StaticQueue *queue, void *data) {

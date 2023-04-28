@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define DIRA 0x00
 #define DIRB 0x01
@@ -16,13 +17,7 @@
 #define bitClear(value, bit) ((value) &= ~(1UL << (bit)))
 #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
-#ifndef SIMULATION
-#include <propeller2.h>
-typedef struct __using("jm_i2c.spin2") I2CBus;
-#else
-#include "SimI2C.h"
-typedef SimI2C I2CBus;
-#endif
+typedef struct __using("lib/Protocol/jm_i2c.spin2") I2CBus;
 typedef struct MCP23017_t
 {
     I2CBus i2cBus;

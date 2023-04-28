@@ -20,13 +20,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifndef SIMULATION
-#include <propeller2.h>
-typedef struct __using("jm_i2c.spin2") Bus;
-#else
-#include "SimI2C.h"
-typedef SimI2C Bus;
-#endif
+typedef struct __using("lib/Protocol/jm_i2c.spin2") Bus;
 
 /* NavKey configuration bit. Use with GCONF */
 enum GCONF_PARAMETER
