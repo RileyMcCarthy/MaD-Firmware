@@ -239,7 +239,7 @@ static void control_cog(void *arg)
                 {
                     if (lastState.motionParameters.mode != MODE_MANUAL) //  sync navkey and encoder position
                     {
-                        //navkey_reset(&navkey);
+                        navkey_reset(&navkey);
                         // navkey_update_status(navkey);
                     }
                     /* Set functions based on navkey */
@@ -297,23 +297,28 @@ static void control_cog(void *arg)
                                 }
                                 DEBUG_INFO("INCREASING STEP SIZE, STEP=%f\n", manual_move.x);
                             }
+
                             Move absolute;
-                            Move manual_move_copy;
-                            memcpy(&manual_move_copy, &manual_move, sizeof(Move));
                             absolute.g = 91;
                             if (navkey.status.UPR) // Up released
                             {
-                                manual_move_copy.x = abs(manual_move.x);
+                                Move manual_move_up;
+                                manual_move_up.g = 1;
+                                manual_move_up.f = manual_move.f;
+                                manual_move_up.x = manual_move.x;
                                 motion_add_move(&absolute);
-                                motion_add_move(&manual_move_copy);
-                                DEBUG_INFO("FUNCTION=INCREMENTAL_JOG, SPEED=%f, STEP=%f\n", manual_move_copy.f, manual_move_copy.x);
+                                motion_add_move(&manual_move_up);
+                                DEBUG_INFO("FUNCTION=INCREMENTAL_JOG, SPEED=%f, STEP=%f\n", manual_move_up.f, manual_move_up.x);
                             }
                             if (navkey.status.DNR > 0) // Down released
                             {
-                                manual_move_copy.x = -1*abs(manual_move.x);
+                                Move manual_move_down;
+                                manual_move_down.g = 1;
+                                manual_move_down.f = manual_move.f;
+                                manual_move_down.x = -1*manual_move.x;
                                 motion_add_move(&absolute);
-                                motion_add_move(&manual_move_copy);
-                                DEBUG_INFO("FUNCTION=INCREMENTAL_JOG, SPEED=%f, STEP=%f\n", manual_move_copy.f, manual_move_copy.x);
+                                motion_add_move(&manual_move_down);
+                                DEBUG_INFO("FUNCTION=INCREMENTAL_JOG, SPEED=%f, STEP=%f\n", manual_move_down.f, manual_move_down.x);
                             }
                             break;
                         case FUNC_MANUAL_CONTINUOUS_JOG: // Setup the navkey for continuous jog (turn on hold)
