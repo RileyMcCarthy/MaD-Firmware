@@ -28,8 +28,8 @@ static int motion_setpoint_steps = 0;
 static int motion_position_steps = 0;
 static long motion_feedrate_steps_per_second = 0;
 
-#define MAX_SIZE_MANUAL 100
-#define MAX_SIZE_TEST 100
+#define MAX_SIZE_MANUAL 10
+#define MAX_SIZE_TEST 200
 
 static Move manual_buffer[MAX_SIZE_MANUAL];
 static Move test_buffer[MAX_SIZE_TEST];
@@ -65,7 +65,7 @@ bool  motion_add_move(Move *command)
     }
 
     DEBUG_INFO("Adding manual motion command with %f steps and %f feedrate\n", command->x, command->f);
-    return queue_push(&manual_queue, command);
+    return queue_push(&manual_queue, (void*)command);
 }
 
 void motion_test_start()
@@ -169,7 +169,6 @@ static void motion_cog(void *arg)
         }
 
         queue_last_time = _getms();
-
         // Should have a mode for pausing all motion, but for now just disable motion
         // motion enable should not be here as the queue should be cleared once disabled
         // pause should remember only stop new step and directions from executing
@@ -180,8 +179,11 @@ static void motion_cog(void *arg)
 
         if (!queue_pop(queue, &command))
             continue;
-        DEBUG_INFO("Running command: %d\n", command.g);
-        monitor_send_move(command.g,command.x,command.f,command.p);
+        if (test_running)
+        {
+            monitor_send_move(command.g,command.x,command.f,command.p);
+        }
+        
         if (motion_enabled)
         {
             switch(command.g)

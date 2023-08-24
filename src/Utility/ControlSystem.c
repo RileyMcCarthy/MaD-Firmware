@@ -240,7 +240,6 @@ static void control_cog(void *arg)
                     if (lastState.motionParameters.mode != MODE_MANUAL) //  sync navkey and encoder position
                     {
                         navkey_reset(&navkey);
-                        // navkey_update_status(navkey);
                     }
                     /* Set functions based on navkey */
                     navkey_update_status(&navkey); // Update navkey status registers

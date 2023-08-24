@@ -419,7 +419,7 @@ void command_recieve(uint8_t cmd)
     }
     case CMD_MANUAL:
     {
-        DEBUG_INFO("%s","Getting manual command\n");
+        DEBUG_INFO("Getting manual command: %s\n", recieved_json);
 
         Move move;
         if (json_to_move(&move, recieved_json))

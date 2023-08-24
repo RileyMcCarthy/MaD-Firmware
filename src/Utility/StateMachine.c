@@ -123,6 +123,13 @@ static State state_machine_motion()
             }
             break;
         }
+        if (machine_state.motionParameters.status != MOTIONSTATUS_ENABLED)
+        {
+            if (machine_state.motionParameters.mode == MODE_TEST_RUNNING)
+            {
+                machine_state.motionParameters.mode = MODE_MANUAL;
+            }
+        }
     }
     else
     {

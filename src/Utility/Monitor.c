@@ -455,7 +455,6 @@ static void monitor_cog(int samplerate)
       if (monitorLogData && (machineState.motionParameters.mode != MODE_TEST_RUNNING))
       {
         // Test is over!
-        DEBUG_NOTIFY("%s","Test is Complete!\n");
         monitorLogData = false;
       }
       
