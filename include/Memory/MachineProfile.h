@@ -1,3 +1,6 @@
+#ifndef MACHINE_PROFILE_H
+#define MACHINE_PROFILE_H
+
 #include <stdbool.h>
 #define MAX_MACHINE_PROFILE_NAME 20
 
@@ -59,3 +62,4 @@ int init_machine_profile();
 bool lock_machine_profile(MachineProfile ** profile);
 bool lock_machine_profile_ms(MachineProfile ** profile, int ms);
 bool unlock_machine_profile();
+#endif // MACHINE_PROFILE_H

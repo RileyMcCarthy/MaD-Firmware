@@ -1,3 +1,4 @@
+#ifndef JSONENCODER_H
 /** Encoding API **/
 #include "StateMachine.h"
 #include "Memory/MachineProfile.h"
@@ -10,3 +11,4 @@ char *machine_profile_to_json(MachineProfile *settings);
 char *sample_profile_to_json(SampleProfile *sample);
 char *test_data_to_json(MonitorData *data);
 bool unlock_json_buffer();
+#endif // JSONENCODER_H

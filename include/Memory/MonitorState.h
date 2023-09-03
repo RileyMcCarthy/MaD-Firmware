@@ -1,3 +1,5 @@
+#ifndef MONITOR_STATE_H
+#define MONITOR_STATE_H
 #include "MachineProfile.h"
 
 typedef enum SDCardState
@@ -49,3 +51,4 @@ bool lock_sd_card(MonitorSDCard ** data);
 bool lock_sd_card_ms(MonitorSDCard ** data, int ms);
 SDCardState * unlock_and_monitor_sd_card();
 bool lock_sd_card();
+#endif // MONITOR_STATE_H

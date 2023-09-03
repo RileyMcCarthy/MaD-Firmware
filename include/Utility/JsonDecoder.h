@@ -1,3 +1,4 @@
+#ifndef __UTILITY_JSONDECODER_H__
 /** Decoding API **/
 #include <stdbool.h>
 #include "StateMachine.h"
@@ -18,3 +19,4 @@ bool json_to_test_data_request(TestDataRequest *request, char *json);
 bool json_to_motion_mode(MotionMode *mode, char *json);
 bool json_to_motion_status(MotionStatus *status, char *json);
 bool json_to_move(Move *move, char *json);
+#endif // __UTILITY_JSONDECODER_H__
