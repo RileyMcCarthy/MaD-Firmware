@@ -2,13 +2,14 @@
 #include "Main/MaD.h"
 #include <stdlib.h>
 #include "StaticQueue.h"
-#include <propeller.h>
+#include <propeller2.h>
 #include "Utility/Debug.h"
 #include "Memory/MachineProfile.h"
 #include <smartpins.h>
 #include <math.h>
 #include "Utility/StateMachine.h"
 #include "Memory/CogStatus.h"
+#include <string.h>
 
 #define G0_RAPID_MOVE 0
 #define G1_LINEAR_MOVE 1
@@ -190,9 +191,9 @@ static void motion_cog(void *arg)
             {
                 case G0_RAPID_MOVE || G1_LINEAR_MOVE:
                 {
-                    if (abs(command.f) < 0.001)
+                    if (fabs(command.f) < 0.001)
                     {
-                        DEBUG_WARNING("G0/G1 Command has zero feedrate: %d\n",command.f);
+                        DEBUG_WARNING("G0/G1 Command has zero feedrate: %f\n",command.f);
                         continue;
                     }
                     int delta_steps = 0;
@@ -273,7 +274,7 @@ static void motion_cog(void *arg)
                             motion_position_steps += delta_steps;
                         else
                             motion_position_steps -= delta_steps;
-                        while(_pinr(PIN_SERVO_PUL) == 0);
+                        while(_pinr(PIN_SERVO_PUL) == 0)
                         {
                             set_motion_status(_getms());
                             if (*state_ptr != STATE_MOTION)
@@ -345,7 +346,7 @@ static void motion_cog(void *arg)
 
 bool motion_begin()
 {
-    int id = _cogstart_C(motion_cog, NULL, &motion_stack[0], sizeof(long) * MOTION_MEMORY_SIZE);
+    int id = _cogstart(motion_cog, NULL, &motion_stack[0], sizeof(long) * MOTION_MEMORY_SIZE);
     if (id != -1)
     {
         return true;

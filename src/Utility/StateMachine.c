@@ -1,5 +1,7 @@
 #include "Utility/StateMachine.h"
 #include "Utility/Debug.h"
+#include <propeller2.h>
+#include <string.h>
 static MachineState machine_state;
 static int machine_state_lock;
 
@@ -348,19 +350,19 @@ ESDChain string_to_esd_chain(char *esdChain)
     {
         return ESD_OK;
     }
-    else if (strmp(esdChain, ESD_CHAIN_POWER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_POWER_STRING, strlen(ESD_CHAIN_POWER_STRING)) == 0)
     {
         return ESD_POWER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_LOWER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_LOWER_STRING, strlen(ESD_CHAIN_LOWER_STRING)) == 0)
     {
         return ESD_LOWER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_UPPER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_UPPER_STRING, strlen(ESD_CHAIN_UPPER_STRING)) == 0)
     {
         return ESD_UPPER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_SWITCH_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_SWITCH_STRING, strlen(ESD_CHAIN_SWITCH_STRING)) == 0)
     {
         return ESD_SWITCH;
     }

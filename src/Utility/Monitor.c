@@ -1,13 +1,19 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <propeller2.h>
+#include <string.h>
 #include "Utility/Monitor.h"
 #include "Utility/StateMachine.h"
 #include "Utility/Debug.h"
-#include "ForceGauge.h"
+#include "Utility/Motion.h"
+#include "ForceGauge/ForceGauge.h"
 #include "Encoder.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include <propeller.h>
 #include "Main/MaD.h"
 #include "Memory/CogStatus.h"
+
+#ifndef MOUNT_PATH
+#define MOUNT_PATH "/sd"
+#endif
 
 extern long motion_position_steps;
 static ForceGauge forceGauge;
@@ -17,7 +23,10 @@ bool loaded_mp = false;
 static bool monitorLogData;
 static char gcode[200] = "";
 static char header[512] = "";
-static char test_path[219] = "/sd/test.csv";
+static char test_path[219] = MOUNT_PATH "/test.csv";
+
+static const char profile_path[] = MOUNT_PATH "/profile.bin";
+static const char test_path_bin[] = MOUNT_PATH "/test.bin";
 
 bool monitor_set_test_name(char *name)
 {
@@ -27,7 +36,8 @@ bool monitor_set_test_name(char *name)
     return false;
   }
   
-  strncpy(test_path, "/sd/", 5);
+  strncpy(test_path, MOUNT_PATH, strlen(MOUNT_PATH)+1);
+  strncpy(test_path, "/", 5);
   strncat(test_path, name, 8);
   strncat(test_path, ".csv", 4);
   return true;
@@ -51,7 +61,7 @@ void monitor_send_move(int g, int x, int f, int p)
   while (gcode_locked)
   {
 
-  }
+  } 
   snprintf(gcode, 200, "G%d X%d F%d P%d", g, x, f, p);
   gcode_locked = true;
 }
@@ -91,7 +101,7 @@ static void read_sd()
   }
   if (sd_card->sd_card_state != SD_CARD_IDLE && sd_card->sd_card_state != SD_CARD_SUCCESS)
   {
-    mount("/sd", _vfs_open_sdcard());
+    mount(MOUNT_PATH, _vfs_open_sdcard());
   }
   switch(sd_card->sd_card_state)
   {
@@ -101,7 +111,7 @@ static void read_sd()
       break;
     case SD_CARD_READ_MACHINE_PROFILE:
       {
-        FILE *file_config_read = fopen("/sd/profile.bin", "r");
+        FILE *file_config_read = fopen(profile_path, "r");
         
         if (file_config_read == NULL)
         {
@@ -115,7 +125,7 @@ static void read_sd()
 
         if (n != sizeof(MachineProfile))
         {
-          DEBUG_ERROR("%s","incorrect number of bytes read: %d\n", n);
+          DEBUG_ERROR("incorrect number of bytes read: %d\n", n);
           sd_card->sd_card_state = SD_CARD_ERROR;
           break;
         }
@@ -127,7 +137,7 @@ static void read_sd()
       }
     case SD_CARD_READ_DATA:
       {
-        FILE *file = fopen("/sd/test.bin", "r");
+        FILE *file = fopen(test_path_bin, "r");
         if (file == NULL)
         {
           DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
@@ -142,7 +152,7 @@ static void read_sd()
           sd_card->sd_card_state = SD_CARD_ERROR;
           break;
         }
-        int n = fread(sd_card->sd_card_data, sizeof(MonitorData), sd_card->read_data_count, file);
+        size_t n = fread(sd_card->sd_card_data, sizeof(MonitorData), sd_card->read_data_count, file);
         fclose(file);
         sd_card->read_data_count = n/sizeof(MonitorData);
         if (sd_card->read_data_count <= 0)
@@ -156,7 +166,7 @@ static void read_sd()
       }
     case SD_CARD_READ_DATA_SIZE:
       {
-        FILE *file = fopen("/sd/test.bin", "r");
+        FILE *file = fopen(test_path_bin, "r");
         if (file == NULL)
         {
           DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
@@ -179,7 +189,7 @@ static void read_sd()
       }
     case SD_CARD_WRITE_MACHINE_PROFILE:
       {
-        FILE *file_config_write = fopen("/sd/profile.bin", "w");
+        FILE *file_config_write = fopen(profile_path, "w");
         if (file_config_write == NULL)
         {
           DEBUG_ERROR("%s","Failed to open file machine profile for writing\n");
@@ -188,7 +198,7 @@ static void read_sd()
         }
         DEBUG_INFO("%s","Writing Machine Profile to SD Card\n");
         int n = fwrite(&sd_card->sd_card_profile, sizeof(MachineProfile), 1, file_config_write);
-        if (n != sizeof(MachineProfile))
+        if (n != 1)
         {
           DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
           sd_card->sd_card_state = SD_CARD_ERROR;
@@ -221,7 +231,7 @@ static void read_sd()
   }
   if (sd_card->sd_card_state != SD_CARD_IDLE && sd_card->sd_card_state != SD_CARD_SUCCESS)
   {
-    umount("/sd");
+    umount(MOUNT_PATH);
   }
   unlock_and_monitor_sd_card();
 }
@@ -256,16 +266,16 @@ void set_gauge_force()
 static void load_machine_profile()
 {
     DEBUG_INFO("%s","Loading machine profile\n");
-    mount("/sd", _vfs_open_sdcard());
-    FILE *mp = fopen("/sd/profile.bin", "r");
+    mount(MOUNT_PATH, _vfs_open_sdcard());
+    FILE *mp = fopen(profile_path, "r");
     if (mp == NULL)
     {
        // Load default profile, one does not exist
         DEBUG_WARNING("%s","No machine profile found, loading default\n");
         MachineProfile temp_profile;
         memset(&temp_profile, 0, sizeof(MachineProfile));
-        strcpy(temp_profile.name,"DEFAULT");
-        FILE* mp_temp = fopen("/sd/profile.bin", "w");
+        strcpy(temp_profile.name, "DEFAULT");
+        FILE* mp_temp = fopen(profile_path, "w");
         if (mp_temp == NULL)
         {
             DEBUG_ERROR("%s","Failed to open file machine profile for writing\n");
@@ -273,7 +283,7 @@ static void load_machine_profile()
             _reboot();
         }
         int n = fwrite(&temp_profile, sizeof(MachineProfile), 1, mp_temp);
-        if (n != sizeof(MachineProfile))
+        if (n != 1)
         {
             DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
             _waitms(1000);
@@ -284,8 +294,8 @@ static void load_machine_profile()
     
     DEBUG_INFO("%s","Reading sd profile from sd\n");
     MachineProfile machine_profile_temp;
-    int n = fread(&machine_profile_temp, sizeof(MachineProfile), 1, mp);
-    if (n != sizeof(MachineProfile))
+    size_t n = fread(&machine_profile_temp, sizeof(MachineProfile), 1, mp);
+    if (n != 1)
     {
         DEBUG_ERROR("incorrect number of bytes read: %d\n", n);
         _waitms(1000);
@@ -307,7 +317,7 @@ static void load_machine_profile()
 
     DEBUG_NOTIFY("%s","Machine profile loaded from SD Card\n");
     set_machine_profile_loaded(true);
-    umount("/sd");
+    umount(MOUNT_PATH);
     return;
     
 }
@@ -360,7 +370,7 @@ static void monitor_cog(int samplerate)
   force_gauge_begin(&forceGauge, FORCE_GAUGE_RX, FORCE_GAUGE_TX);
   
   // Set up encoder
-  encoder.start(SERVO_ENCODER_A, SERVO_ENCODER_B, -1, false, 0, -100000, 100000);
+  encoder_start(&encoder, SERVO_ENCODER_A, SERVO_ENCODER_B, -1, false, 0, -100000, 100000);
   long lastTime = _getms();
   int force_count = 0;
   int force_raw = 0;
@@ -393,10 +403,10 @@ static void monitor_cog(int samplerate)
 
     if (update)
     {
-        set_monitor_status(_getms());
+      set_monitor_status(_getms());
         monitor_data_local.log = force_count; // Increment when new data is added to buffer, used for checking if data is new.
         monitor_data_local.forceRaw = force_raw;
-        monitor_data_local.encoderRaw = encoder.value();
+        monitor_data_local.encoderRaw = encoder_value(&encoder);
         monitor_data_local.timems = _getms();
         monitor_data_local.timeus = _getus();
         monitor_data_local.forcemN = raw_to_force(monitor_data_local.forceRaw, machine_profile.configuration.forceGaugeOffset, machine_profile.configuration.forceGaugeGain) - gauge_force;
@@ -409,7 +419,7 @@ static void monitor_cog(int samplerate)
         {
           DEBUG_NOTIFY("%s","Gauge Length Set!");
           trigger_set_gauge = false;
-          encoder.set(0);
+          encoder_set(&encoder, 0);
           motion_set_position(0);
         }
         if (trigger_set_gauge_force)
@@ -427,15 +437,15 @@ static void monitor_cog(int samplerate)
       if (testFileCsv == NULL)
       {
         // Begin Logging data
-        mount("/sd", _vfs_open_sdcard());
+        mount(MOUNT_PATH, _vfs_open_sdcard());
         testFileCsv = fopen(test_path, "w");
-        testFileBin = fopen("/sd/test.bin", "w");
+        testFileBin = fopen(test_path_bin, "w");
         if (testFileCsv == NULL || testFileBin == NULL)
         {
           DEBUG_ERROR("Failed to open file %s for writing\n", test_path);
-          umount("/sd");
+          umount(MOUNT_PATH);
           _waitms(100);
-          mount("/sd", _vfs_open_sdcard());
+          mount(MOUNT_PATH, _vfs_open_sdcard());
         }
         fprintf(testFileCsv, "%s\n", header);
         fprintf(testFileCsv, "Time,Force,Distance,Setpoint\n");
@@ -479,7 +489,7 @@ static void monitor_cog(int samplerate)
     {
       fclose(testFileCsv);
       fclose (testFileBin);
-      umount("/sd");
+      umount(MOUNT_PATH);
       testFileCsv = NULL;
       testFileBin = NULL;
     }
@@ -602,7 +612,7 @@ bool read_sd_profile(MachineProfile * profile)
 
 bool sd_profile_exists()
 {
-  return sd_card_file_exists("/sd/profile.bin");
+  return sd_card_file_exists(profile_path);
 }
 
 bool write_sd_profile(MachineProfile * profile)
@@ -658,7 +668,7 @@ int read_sd_card_data(MonitorData *data, int index, int count)
 
   sd_card->read_data_count = count;
   sd_card->read_data_index = index;
-  sd_card->sd_card_data = data;
+  sd_card->sd_card_data = (char *)data;
   sd_card->sd_card_state = SD_CARD_READ_DATA;
   DEBUG_INFO("%s","Changing state to sd card read data\n");
 

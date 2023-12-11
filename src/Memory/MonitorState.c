@@ -1,6 +1,7 @@
 #include "Memory/MonitorState.h"
 #include "Utility/Debug.h"
 #include <stddef.h>
+#include <propeller2.h>
 
 static MonitorData monitor_data;
 static MonitorSDCard monitor_sd_card; 

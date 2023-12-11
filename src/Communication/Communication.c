@@ -1,6 +1,8 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
-#include "Main/Communication/Communication.h"
+#include <propeller2.h>
+#include "Communication/Communication.h"
 #include "Utility/StateMachine.h"
 #include "Utility/JsonEncoder.h"
 #include "Utility/JsonDecoder.h"
@@ -10,8 +12,10 @@
 #include "StaticQueue.h"
 #include "Memory/MachineProfile.h"
 #include "Main/MaD.h"
-#include "Main/Communication/CRC.h"
-#include <propeller.h>
+#include "Communication/CRC.h"
+#include "FullDuplexSerial.h"
+#include "Memory/CogStatus.h"
+
 /* Command structure
  * w<7 cmd bits> <N> <N data>... <CRC>
  * ________ ________ ________
@@ -21,9 +25,8 @@
 
 #define COMMUNICATION_MEMORY_SIZE 8000
 static long comm_stack[COMMUNICATION_MEMORY_SIZE];
-typedef struct __using("lib/Protocol/jm_fullduplexserial.spin2") FDS;
 
-static FDS fds;
+static Serial fds;
 
 static Notification notification_buffer[MAX_SIZE_NOTIFICATION_BUFFER];
 static StaticQueue notification_queue;
@@ -84,17 +87,17 @@ static bool send(int cmd, char *buf, uint16_t size)
 {
     DEBUG_INFO("Sending data of size: %d\n", size);
 
-    fds.tx(0x55);
-    fds.tx(cmd);
-    fds.tx(size);
-    fds.tx(size >> 8);
+    serial_tx(&fds, 0x55);
+    serial_tx(&fds, cmd);
+    serial_tx(&fds, size);
+    serial_tx(&fds, size >> 8);
 
     for (int i = 0; i < size; i++)
     {
-        fds.tx(buf[i]);
+        serial_tx(&fds, buf[i]);
     }
-    unsigned crc = crc8(buf, size);
-    fds.tx(crc);
+    unsigned crc = crc8((uint8_t*)buf, size);
+    serial_tx(&fds, crc);
     return true;
 }
 
@@ -103,7 +106,7 @@ static int recieveCMD()
     while (1)
     {
         int res;
-        while ((res = fds.rxtime(10)) != 0x55)
+        do
         {
             set_communication_status(_getms());
             Notification notification;
@@ -117,8 +120,8 @@ static int recieveCMD()
                 send(CMD_NOTIICATION, notification_json, strlen(notification_json));
                 unlock_json_buffer();
             }
-        }
-        int cmd = fds.rxtime(10);
+        } while ((res = serial_rxtime(&fds, 10)) != 0x55);
+        int cmd = serial_rxtime(&fds, 10);
         if (cmd != -1)
         {
             //DEBUG_INFO("GOT CMD: %d\n", cmd);
@@ -142,21 +145,24 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read data size
-    uint16_t size = fds.rxtime(10);
-    if (size == -1)
+    int res = serial_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s", "invalid data recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
-
-    size |= fds.rxtime(10) << 8;
-    if (size == -1)
+    uint16_t size = ((uint8_t)res);
+    
+    res = serial_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s","invalid data recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
+
+    size |= ((uint8_t)res) << 8;
 
     DEBUG_INFO("Recieved data of size: %d\n", size);
 
@@ -169,7 +175,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     // Read data
     for (unsigned int i = 0; i < size; i++)
     {
-        buf[i] = fds.rxtime(10);
+        buf[i] = serial_rxtime(&fds, 10);
         if (buf[i] == -1)
         {
             DEBUG_WARNING("%s","invalid data recieved\n");
@@ -179,16 +185,18 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read CRC
-    uint8_t crc = fds.rxtime(10);
-    if (crc == -1)
+    res = serial_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s","no crc recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
 
+    uint8_t crc = (uint8_t)res;
+
     // Check CRC
-    if (crc != crc8(buf, size))
+    if (crc != crc8((uint8_t *)buf, size))
     {
         DEBUG_WARNING("%s","invalid crc recieved\n");
         send_awk(cmd, "FAIL");
@@ -498,7 +506,7 @@ static void beginCommunication(void *arg)
 {
     _waitms(500); // wait for monitor to start, should be replaced by cog status!
     // Begin main loop
-    fds.start(RPI_RX, RPI_TX, 0, 115200);
+    serial_start(&fds, RPI_RX, RPI_TX, 0, 115200);
     while (1)
     {
         DEBUG_INFO("%s","Waiting for command\n");

@@ -1,50 +1,13 @@
 #include <stdint.h>
+#include <propeller2.h>
 #include "Main/MaD.h"
 #include "JSON.h"
+#include "Utility/Motion.h"
 #include "Utility/ControlSystem.h"
 #include "Utility/Debug.h"
+#include "Communication/Communication.h"
 
 int _stdio_debug_lock;
-
-/**
- * @brief Starts the display, motion control, and all MaD board related tasks. Should never exit
- *
- */
-
-void test_sd_card()
-{
-  mount("/sd", _vfs_open_sdcard());
-  _pinl(56);
-  int lastblink = 0;
-  for (int j=0;j<100;j++)
-  {
-    FILE *fp = fopen("/sd/test.txt", "w");
-    if (fp == NULL)
-    {
-      printf("Failed to open file for writing\n");
-      return;
-    }
-    printf("Writing to file\n");
-    for (int i=0;i<10000;i++)
-    {
-      int len = fprintf(fp, "Hello World %d\n", i);
-      if (len < 0)
-      {
-        printf("Failed to write to file: %d\n",i);
-        return;
-      }
-      printf("Wrote to file %d\n", i);
-      _waitms(1);
-      if ((_getms() - lastblink) > 1000)
-      {
-        _pinnot(56);
-        lastblink = _getms();
-      }
-    }
-    fclose(fp);
-    printf("Finished writing to file\n");
-  }
-}
 
 #include "i2cNavKey.h"
 static NavKey navkey1;
@@ -72,7 +35,7 @@ void test_navkey()
 #include <smartpins.h>
 void mad_begin()
 {
-  notification_init();
+    notification_init();
   machine_state_init(); // Initialize the machine state default values, memory, and lock
   init_machine_profile(); // Initialize the machine profile memory and lock
   _stdio_debug_lock = _locknew();

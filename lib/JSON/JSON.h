@@ -18,11 +18,13 @@ const json_t * json_create_static(char *json);
 bool double_to_json(const char *name, double value);
 bool int_to_json(const char *name, int value);
 bool string_to_json(const char *name, const char *value);
+bool custom_string_to_json(const char *string);
 void clear_json_buffer();
 char *get_json_buffer();
 bool header_to_json(const char *name);
 bool close_json_block();
 bool open_json_block();
+bool json_append_comma();
 bool delete_json_last_comma();
 
 #endif

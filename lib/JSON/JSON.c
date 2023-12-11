@@ -1,4 +1,5 @@
 #include "JSON.h"
+#include <stdio.h>
 
 // Used for decoding string into tokens
 #define MAX_TOKENS 300

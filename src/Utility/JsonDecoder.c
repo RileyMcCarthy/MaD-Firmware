@@ -24,7 +24,7 @@ static bool json_to_machine_check_parameters(const json_t *json, MachineCheckPar
     bool success = true;
     char *property = NULL;
     success &= json_property_to_string_ref(json, "ESD Chain",&property);
-    parameters->esdChain = esd_chain_from_string(property);
+    parameters->esdChain = string_to_esd_chain(property);
     success &= json_property_to_bool(json, "Servo OK",&(parameters->servoOK));
     success &= json_property_to_bool(json, "Force Gauge Com",&(parameters->forceGaugeCom));
     success &= json_property_to_bool(json, "Servo Com",&(parameters->servoCom));

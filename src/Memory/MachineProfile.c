@@ -1,6 +1,7 @@
 #include "Memory/MachineProfile.h"
 #include "Utility/Debug.h"
 #include <stddef.h>
+#include <propeller2.h>
 
 static MachineProfile machine_profile;
 static int _machine_profile_lock = -1;

@@ -1,5 +1,6 @@
 #include "Memory/CogStatus.h"
 #include "Utility/Debug.h"
+#include <propeller2.h>
 
 #define COG_STATUS_TIMOUT 1000
 
@@ -32,7 +33,7 @@ void set_monitor_status(int statusms)
     _cog_monitor_status = statusms;
 }
 
-static _last_debug_sent = 0;
+static uint32_t _last_debug_sent = 0;
 
 bool get_machine_status()
 {
