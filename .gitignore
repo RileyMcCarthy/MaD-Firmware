@@ -3,3 +3,6 @@
 
 emulation/sd
 emulation/__pycache__
+emulation/venv
+Emulation/MaDSim.log
+Emulation/MaDSim/__pycache__

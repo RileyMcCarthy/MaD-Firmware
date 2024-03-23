@@ -50,15 +50,13 @@ static void init_navkey()
     navkey_write_max(&navkey, NAVKEY_MAX_COUNT);             /* Set the maximum threshold*/
     navkey_write_min(&navkey, -NAVKEY_MAX_COUNT);            /* Set the minimum threshold */
     navkey_write_step(&navkey, 1);                 /* Set the step to 1*/
-    navkey_write_double_push_period(&navkey, 300); /*Set a period for the double push of 300ms */
+    navkey_write_double_push_period(&navkey, 100); /*Set a period for the double push of 300ms */
     navkey_write_counter(&navkey, 0);              // reset counter to position
 }
 
 /*responsible for sending moves from using navkey, updating state machine, checking for faults*/
 static void control_cog(void *arg)
 {
-    arg;
-
     /* Initialize IO */
     _pinr(ESD_UPPER_PIN);
     _pinr(ESD_LOWER_PIN);

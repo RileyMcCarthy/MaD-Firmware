@@ -19,7 +19,7 @@ void test_navkey()
     navkey_write_max(&navkey1, 100000);             /* Set the maximum threshold*/
     navkey_write_min(&navkey1, -100000);            /* Set the minimum threshold */
     navkey_write_step(&navkey1, 1);                 /* Set the step to 1*/
-    navkey_write_double_push_period(&navkey1, 300); /*Set a period for the double push of 300ms */
+    navkey_write_double_push_period(&navkey1, 100); /*Set a period for the double push of 300ms */
     navkey_write_counter(&navkey1, 0);              // reset counter to position
     printf("Navkey test started\n");
     navkey1.status.UPR = 0;
@@ -35,7 +35,7 @@ void test_navkey()
 #include <smartpins.h>
 void mad_begin()
 {
-    notification_init();
+  notification_init();
   machine_state_init(); // Initialize the machine state default values, memory, and lock
   init_machine_profile(); // Initialize the machine profile memory and lock
   _stdio_debug_lock = _locknew();
@@ -66,7 +66,7 @@ void mad_begin()
   }
 
   DEBUG_INFO("%s","Starting serial communication\n");
-  start_communication();
+  //start_communication();
   DEBUG_NOTIFY("%s","MaD Firmware Started\n");
   state_machine_set(PARAM_SELF_CHARGE_PUMP, true);
   monitor_begin(10);

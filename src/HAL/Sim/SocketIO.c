@@ -8,15 +8,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "StaticQueue.h"
+#include "Utility/Debug.h"
 
 static char socket_ip[64] = "127.0.0.1";
-static int socket_port = 1234;
-
-void socketio_set_address(char* address, int port)
-{
-    strncpy(socket_ip, address, 64);
-    socket_port = port;
-}
+static int socket_port_base = 9100;
 
 void socketio_send_str(int32_t socket_id, char* data)
 {
@@ -32,9 +27,10 @@ void socketio_send(int32_t socket_id, uint8_t data)
     send(socket_id, buffer, sizeof(uint8_t), 0);
 }
 
-int32_t socketio_create_socket(char* id)
+int32_t socketio_create_socket(int rxpin)
 {
     struct sockaddr_in server_addr;
+    int port = socket_port_base + rxpin;
 
     // Create socket
     int32_t socket_id = socket(AF_INET, SOCK_STREAM, 0);
@@ -43,7 +39,7 @@ int32_t socketio_create_socket(char* id)
         exit(1);
     }
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(socket_port);
+    server_addr.sin_port = htons(port);
     // Use inet_pton to convert the IP address to binary form
     if (inet_pton(AF_INET, socket_ip, &server_addr.sin_addr) <= 0) {
         perror("Invalid address");
@@ -52,14 +48,10 @@ int32_t socketio_create_socket(char* id)
 
     // Connect to the server
     if (connect(socket_id, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        DEBUG_INFO("Error in connection to %s:%d\n", socket_ip, port);
         perror("Error in connection");
     }
-
-    // Send the ID as the first message if provided
-    if (id != NULL) {
-        socketio_send_str(socket_id, id);
-    }
-
+    DEBUG_INFO("Connected to %s:%d\n", socket_ip, port);
     return socket_id;
 }
 

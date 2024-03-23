@@ -11,7 +11,7 @@ typedef struct ForceGauge_s
     int counter;
     unsigned int force;
     uint8_t buffer[4];
-    Serial serial;
+    FullDuplexSerial serial;
     int rx, tx;
     int forceRaw;
     bool responding;

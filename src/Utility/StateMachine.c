@@ -204,6 +204,9 @@ bool state_machine_set(Parameter param, int state)
             }
         }
         break;
+    case PARAM_FUNCTION:
+    default:
+        break;
     }
 
     machine_state.state = state_machine_motion();

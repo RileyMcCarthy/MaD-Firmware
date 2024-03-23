@@ -32,46 +32,46 @@ static long force_stack[FORCE_MEMORY_SIZE];
 static void write_register(ForceGauge *forceGauge, uint8_t reg, uint8_t data)
 {
     // Write has format(rrr = reg to write): 0x55, 0001 rrrx {data}
-    serial_tx(&(forceGauge->serial), 0x55);
-    serial_tx(&(forceGauge->serial), 0x40 + (reg << 1));
-    serial_tx(&(forceGauge->serial), data);
+    fds_tx(&(forceGauge->serial), 0x55);
+    fds_tx(&(forceGauge->serial), 0x40 + (reg << 1));
+    fds_tx(&(forceGauge->serial), data);
 }
 
 static uint8_t read_register(ForceGauge *forceGauge, uint8_t reg)
 {
     // read has format(rrr = reg to read): 0x55, 0010 rrrx, {returned data}
-    serial_tx(&(forceGauge->serial), 0x55);
-    serial_tx(&(forceGauge->serial), 0x20 + (reg << 1));
-    uint8_t temp = serial_rxtime(&(forceGauge->serial), 100);
+    fds_tx(&(forceGauge->serial), 0x55);
+    fds_tx(&(forceGauge->serial), 0x20 + (reg << 1));
+    uint8_t temp = fds_rxtime(&(forceGauge->serial), 100);
     return temp;
 }
 
 static bool force_gauge_reset(ForceGauge *forceGauge)
 {
-    serial_start(&(forceGauge->serial), forceGauge->rx, forceGauge->tx, 0, BAUD);
-    serial_tx(&(forceGauge->serial), 0x55); // Synchronization word
-    serial_tx(&(forceGauge->serial), 0x01); // RESET
+    fds_start(&(forceGauge->serial), forceGauge->rx, forceGauge->tx, 0, BAUD);
+    fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
+    fds_tx(&(forceGauge->serial), 0x01); // RESET
     _waitms(100);
-    serial_tx(&(forceGauge->serial), 0x55); // Synchronization word
-    serial_tx(&(forceGauge->serial), 0x06); // RESET
+    fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
+    fds_tx(&(forceGauge->serial), 0x06); // RESET
     _waitms(100);
     write_register(forceGauge, CONFIG_1, CONFIG_DATA1); // Setting data mode to continuous
     write_register(forceGauge, CONFIG_2, CONFIG_DATA2); // Setting data counter on
     write_register(forceGauge, CONFIG_3, CONFIG_DATA3); // Setting data counter on
     //write_register(forceGauge, CONFIG_4, CONFIG_DATA4); // Setting data counter on CHANGED
-    serial_tx(&(forceGauge->serial), 0x55); // Synchronization word
-    serial_tx(&(forceGauge->serial), 0x08);
+    fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
+    fds_tx(&(forceGauge->serial), 0x08);
     int temp;
     if ((temp = read_register(forceGauge, CONFIG_1)) != CONFIG_DATA1)
     {
         _waitms(100);
-        serial_stop(&(forceGauge->serial));
+        fds_stop(&(forceGauge->serial));
         DEBUG_ERROR("Force Gauge not responding, expected %d, got %d\n", CONFIG_DATA1, temp);
         return false;
     }
 
     _waitms(100);
-    serial_stop(&(forceGauge->serial));
+    fds_stop(&(forceGauge->serial));
     return true;
 }
 
@@ -87,24 +87,34 @@ static void continuous_data(void *arg)
     int spmode = P_ASYNC_RX;
     int baudcfg = 7 + ((_clockfreq() / BAUD) << 16);
     long transmittx = delay * 35 * 2;
-    long disconnecttx = _clockfreq() / 10; // 100ms before considered disconnected
+    long disconnecttx = _clockfreq(); // 1000ms before considered disconnected
     _pinclear(rx);
     _pinstart(rx, spmode, baudcfg, 0);
-    long lastData = _cnt();
+    uint32_t lastData = _cnt();
     while (1)
     {
+        // need to ifdef under emulator
+        if (_cogrunning(forceGauge->cogid) == false)
+        {
+            DEBUG_ERROR("%s","Force gauge cog stopped\n");
+            break;
+        }
+        DEBUG_ERROR("%s","Force gauge cog running\n");
         while (!_pinr(rx))
         {
             if ((_cnt() - lastData) > disconnecttx)
             {
                 forceGauge->responding = false;
-                if (force_gauge_reset(forceGauge))
+                DEBUG_INFO("force gauge reconnecting after timeout %d/%ld\n", (_cnt() - lastData), disconnecttx);
+                _pinclear(rx);
+                while (force_gauge_reset(forceGauge) == false)
                 {
-                    _pinclear(rx);
-                    _pinstart(rx, spmode, baudcfg, 0);
-                    forceGauge->responding = true;
-                    continue;
+                    // trying again
+                    _waitms(100);
                 }
+                _pinstart(rx, spmode, baudcfg, 0);
+                forceGauge->responding = true;
+                lastData = _cnt();
                 continue;
             }
             else if ((_cnt() - lastData) > transmittx && index > 0)
@@ -135,7 +145,6 @@ static void continuous_data(void *arg)
  * @param forceGauge The force gauge structure to start
  * @param rx serial rx pin
  * @param tx serial tx pin
- * @return Error: FORCEGAUGE_NOT_RESPONDING if communications fails, FORCEEGAUGE_COG_FAIL if cog fails to start, SUCCESS otherwise.
  */
 bool force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
 {
@@ -145,12 +154,12 @@ bool force_gauge_begin(ForceGauge *forceGauge, int rx, int tx)
     
     forceGauge->responding = force_gauge_reset(forceGauge);
 
-    forceGauge->cogid = _cogstart_C(continuous_data, forceGauge, &force_stack[0], sizeof(long) * FORCE_MEMORY_SIZE);
-    if (forceGauge->cogid <= 0)
+    if (forceGauge->responding)
     {
-        return false;
+        forceGauge->cogid = _cogstart_C(continuous_data, forceGauge, &force_stack[0], sizeof(long) * FORCE_MEMORY_SIZE);
+        forceGauge->responding &= forceGauge->cogid > 0;
     }
-    return true;
+    return forceGauge->responding;
 }
 
 void force_gauge_stop(ForceGauge *forceGauge)

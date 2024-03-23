@@ -26,7 +26,7 @@
 #define COMMUNICATION_MEMORY_SIZE 8000
 static long comm_stack[COMMUNICATION_MEMORY_SIZE];
 
-static Serial fds;
+static FullDuplexSerial fds;
 
 static Notification notification_buffer[MAX_SIZE_NOTIFICATION_BUFFER];
 static StaticQueue notification_queue;
@@ -87,17 +87,17 @@ static bool send(int cmd, char *buf, uint16_t size)
 {
     DEBUG_INFO("Sending data of size: %d\n", size);
 
-    serial_tx(&fds, 0x55);
-    serial_tx(&fds, cmd);
-    serial_tx(&fds, size);
-    serial_tx(&fds, size >> 8);
+    fds_tx(&fds, 0x55);
+    fds_tx(&fds, cmd);
+    fds_tx(&fds, size);
+    fds_tx(&fds, size >> 8);
 
     for (int i = 0; i < size; i++)
     {
-        serial_tx(&fds, buf[i]);
+        fds_tx(&fds, buf[i]);
     }
     unsigned crc = crc8((uint8_t*)buf, size);
-    serial_tx(&fds, crc);
+    fds_tx(&fds, crc);
     return true;
 }
 
@@ -105,9 +105,15 @@ static int recieveCMD()
 {
     while (1)
     {
+        #ifdef __EMULATION__
+            _waitms(10);
+        #endif
         int res;
         do
         {
+            #ifdef __EMULATION__
+            _waitms(10);
+            #endif
             set_communication_status(_getms());
             Notification notification;
             if (queue_pop(&notification_queue, &notification))
@@ -120,11 +126,10 @@ static int recieveCMD()
                 send(CMD_NOTIICATION, notification_json, strlen(notification_json));
                 unlock_json_buffer();
             }
-        } while ((res = serial_rxtime(&fds, 10)) != 0x55);
-        int cmd = serial_rxtime(&fds, 10);
+        } while ((res = fds_rxtime(&fds, 10)) != 0x55);
+        int cmd = fds_rxtime(&fds, 10);
         if (cmd != -1)
         {
-            //DEBUG_INFO("GOT CMD: %d\n", cmd);
             return cmd;
         }
     }
@@ -145,7 +150,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read data size
-    int res = serial_rxtime(&fds, 10);
+    int res = fds_rxtime(&fds, 10);
     if (res == -1)
     {
         DEBUG_WARNING("%s", "invalid data recieved\n");
@@ -154,7 +159,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
     uint16_t size = ((uint8_t)res);
     
-    res = serial_rxtime(&fds, 10);
+    res = fds_rxtime(&fds, 10);
     if (res == -1)
     {
         DEBUG_WARNING("%s","invalid data recieved\n");
@@ -175,7 +180,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     // Read data
     for (unsigned int i = 0; i < size; i++)
     {
-        buf[i] = serial_rxtime(&fds, 10);
+        buf[i] = fds_rxtime(&fds, 10);
         if (buf[i] == -1)
         {
             DEBUG_WARNING("%s","invalid data recieved\n");
@@ -185,7 +190,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read CRC
-    res = serial_rxtime(&fds, 10);
+    res = fds_rxtime(&fds, 10);
     if (res == -1)
     {
         DEBUG_WARNING("%s","no crc recieved\n");
@@ -243,6 +248,7 @@ static void command_respond(uint8_t cmd)
         DEBUG_INFO("Sending Data (%d)\n", monitor_data.log);
         snprintf(response_json, MAX_RESPONSE_SIZE, "{\"Force\":%d,\"Position\":%d,\"Setpoint\":%d,\"Time\":%d,\"Log\":%d, \"Raw\":%d}",
             monitor_data.forcemN, monitor_data.encoderum, monitor_data.setpoint, monitor_data.timeus, monitor_data.log,monitor_data.forceRaw);
+        DEBUG_INFO("Sending: %s\n", response_json);
         send(CMD_DATA, response_json, strlen(response_json)); // dont send null ptr
 
         break;
@@ -434,7 +440,7 @@ void command_recieve(uint8_t cmd)
         {
             if (motion_add_move(&move))
             {
-                DEBUG_INFO("Adding move G:%d X%d F%d\n", move.g, move.x, move.f);
+                DEBUG_INFO("Adding move G:%d X%f F%f\n", move.g, move.x, move.f);
             }
             else
             {
@@ -506,9 +512,12 @@ static void beginCommunication(void *arg)
 {
     _waitms(500); // wait for monitor to start, should be replaced by cog status!
     // Begin main loop
-    serial_start(&fds, RPI_RX, RPI_TX, 0, 115200);
+    fds_start(&fds, RPI_RX, RPI_TX, 0, 115200);
     while (1)
     {
+        #ifdef __EMULATION__
+            _waitms(10);
+        #endif
         DEBUG_INFO("%s","Waiting for command\n");
         int cmd = recieveCMD();
         DEBUG_INFO("cmd:%d,write:%d\n", (cmd & ~CMD_WRITE), ((cmd & CMD_WRITE) == CMD_WRITE));

@@ -10,10 +10,11 @@ void encoder_start(Encoder *self, uint8_t pinA, uint8_t pinB, uint8_t btn, bool 
 }
 int32_t encoder_value(Encoder *self)
 {
+    int32_t value = 0;
     if (self == NULL)
     {
-        return 0;
     }
+    return value;
 }
 void encoder_set(Encoder *self, int32_t value)
 {

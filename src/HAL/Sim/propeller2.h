@@ -2,6 +2,7 @@
 #define __PROPELLER2__H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define __FLEXC__ // Using FlexC compiler for Propeller 2
 #ifndef __FLEXC__
@@ -48,7 +49,6 @@ extern volatile uint32_t _INB;
  */
 
 #define ANY_COG 0x10
-
 /*
  * common types
  */
@@ -102,6 +102,8 @@ void	  _reboot(void);
 int       _coginit(int cog, void *pgm, void *ptr);
 #define _cognew(pgm, ptr) _coginit(ANY_COG, pgm, ptr)
 
+void initMicroseconds();
+
 /* start C code in another COG */
 int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_size);
 
@@ -110,6 +112,7 @@ int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_s
 #define _cogstart_C(func, arg, stack, size) _cogstart(func, arg, stack, size)
 
 /* stop/check status of COGs */
+bool _cogrunning(int cog);
 void      _cogstop(int cog);
 int       _cogchk(int cog);
 int       _cogid(void);

@@ -84,7 +84,6 @@ static bool get_force(int lastLog)
     DEBUG_ERROR("%s","Force Gauge not responding\n");
     last_error = _getms();
   }
-  // maybe force gauge should do this reconnect itself?
   state_machine_set(PARAM_MACHINE_FORCE_GAUGE_COM, 0);
   return false;
 }
@@ -106,6 +105,7 @@ static void read_sd()
   switch(sd_card->sd_card_state)
   {
     case SD_CARD_IDLE:
+    case SD_CARD_ERROR:
       break;
     case SD_CARD_SUCCESS:
       break;
@@ -157,7 +157,7 @@ static void read_sd()
         sd_card->read_data_count = n/sizeof(MonitorData);
         if (sd_card->read_data_count <= 0)
         {
-          DEBUG_ERROR("%s","incorrect number of bytes read: %d\n", n);
+          DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
           sd_card->sd_card_state = SD_CARD_ERROR;
           break;
         }
@@ -175,12 +175,12 @@ static void read_sd()
         }
         
         fseek(file, 0, SEEK_END);
-        int n = ftell(file);
+        long n = ftell(file);
         fclose(file);
         sd_card->read_data_count = n/sizeof(MonitorData);
         if (sd_card->read_data_count == 0)
         {
-          DEBUG_ERROR("%s","incorrect number of bytes read: %d\n", n);
+          DEBUG_ERROR("incorrect number of bytes read: %ld\n", n);
           sd_card->sd_card_state = SD_CARD_ERROR;
           break;
         }
@@ -297,7 +297,7 @@ static void load_machine_profile()
     size_t n = fread(&machine_profile_temp, sizeof(MachineProfile), 1, mp);
     if (n != 1)
     {
-        DEBUG_ERROR("incorrect number of bytes read: %d\n", n);
+        DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
         _waitms(1000);
         _reboot();
     }
@@ -399,7 +399,6 @@ static void monitor_cog(int samplerate)
       force_raw = 0; // Force gauge not responding, set to 0
     }
     
-    long forceus = _getus();
 
     if (update)
     {
@@ -430,7 +429,6 @@ static void monitor_cog(int samplerate)
         }
     }
 
-    long update_us = _getus();
     
     if (monitorLogData)
     {
@@ -508,6 +506,12 @@ static void monitor_cog(int samplerate)
     else
     {
       DEBUG_WARNING("%s","Failed to lock monitor data while writing to sd card\n");
+    }
+
+    //printf("WriteSDTime: %lu\n", _getus()-start);
+    if (_getms() - start > 1000)
+    {
+      DEBUG_WARNING("Monitor Cog taking too long: %ld\n", _getms()-start);
     }
 
     long write_sd_us = _getus();

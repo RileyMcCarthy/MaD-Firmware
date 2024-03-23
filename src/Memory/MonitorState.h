@@ -9,7 +9,6 @@ typedef enum SDCardState
   SD_CARD_READ_MACHINE_PROFILE, // read machine profile from SD card, updated global struct (locked)
   SD_CARD_READ_DATA,
   SD_CARD_READ_DATA_SIZE,
-  SD_CARD_WRITE_DATA,
   SD_CARD_WRITE_MACHINE_PROFILE,
   SD_CARD_FILE_EXISTS,
   SD_CARD_ERROR

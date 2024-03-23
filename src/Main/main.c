@@ -11,19 +11,9 @@ enum
 };
 
 #ifdef __EMULATION__
-#include "SocketIO.h"
 int main() {
     setbuf(stdout, NULL);
-    
-    int port = 1234;
-    char address[64];
-    strncpy(address, "127.0.0.1", 64);
-    
-    printf("Connecting to %s:%d\n", address, port);
-
-    socketio_begin();
-    socketio_set_address(address, port);
-
+    initMicroseconds();
     mad_begin();
     return 0;
 }

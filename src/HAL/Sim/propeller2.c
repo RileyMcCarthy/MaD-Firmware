@@ -9,12 +9,14 @@
 #include <stdbool.h>
 #include <smartpins.h>
 #include "SocketIO.h"
+#include "Utility/Debug.h"
 
 #define TIME_SCALING_FACTOR 1
 #define CLOCK_FREQ 180000000
 #define MAX_COGS 8
 static pthread_t __cogs[MAX_COGS];
 static bool __cog_running[MAX_COGS];
+static volatile uint32_t __microseconds = 0;
 
 #define MAX_LOCKS 8
 static int __lock_count = 0;
@@ -28,6 +30,25 @@ typedef struct {
 } GPIO;
 
 static GPIO __gpio[64] = {0};
+
+// New thread function to increment the microseconds counter
+static void * incrementMicroseconds(void* arg) {
+    uint32_t incrementValue = 1; // Increment by 1 microseconds (adjust as needed)
+
+    while (1) {
+        __microseconds += incrementValue;
+        usleep(incrementValue); // Sleep for the specified increment value
+    }
+}
+
+// Initialization function to start the microseconds incrementing thread
+void initMicroseconds() {
+    pthread_t thread;
+    if (pthread_create(&thread, NULL, incrementMicroseconds, NULL) != 0) {
+        perror("Error creating microseconds incrementing thread");
+        exit(EXIT_FAILURE);
+    }
+}
 
 int _locknew() {
     static int lock_index = 0; // Index of the next available mutex
@@ -75,23 +96,17 @@ int _lockchk(int lock)
 
 uint32_t  _getms()
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint32_t)(((tv.tv_sec * 1000) + (tv.tv_usec / 1000))/TIME_SCALING_FACTOR);
+    return (uint32_t)(__microseconds/1000);
 }
 
-uint32_t  _getus()
-{
-   struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return ((((uint64_t)tv.tv_sec * 1000000ULL) + (uint64_t)tv.tv_usec)/TIME_SCALING_FACTOR);
+// Modified _getus to use the global microseconds variable
+uint32_t _getus() {
+    return (uint32_t)(__microseconds);
 }
 
 uint32_t  _cnt()
 {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint32_t)(((uint64_t)tv.tv_sec * 1000000ULL) + (uint64_t)tv.tv_usec) * (CLOCK_FREQ / 1000000);
+    return (uint32_t)(__microseconds) * (CLOCK_FREQ / 1000000);
 }
 
 void _waitx(uint32_t cycles)
@@ -104,7 +119,10 @@ void _waitsec(uint32_t seconds)
 }
 void _waitms(uint32_t milliseconds)
 {
-    usleep(milliseconds * 1000); // Sleep for the specified number of milliseconds
+    uint32_t current_time = _getms();
+    while (_getms() - current_time < milliseconds) {
+        // Wait until the specified number of milliseconds has passed
+    }
 }
 void _waitus(uint32_t microseconds)
 {
@@ -114,9 +132,12 @@ void _waitus(uint32_t microseconds)
 // Wrapper for _cogstart
 int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_size) {
     // Find the next available cog
-    int cog = 0;
-    while (cog < MAX_COGS && __cog_running[cog]) {
-        cog++;
+    uint8_t cog = MAX_COGS;
+    for (uint8_t i = 0; i < MAX_COGS; i++) {
+        if (__cog_running[cog] == false) {
+            cog = i;
+            break;
+        }
     }
 
     if (cog == MAX_COGS) {
@@ -150,10 +171,15 @@ int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_s
 void _cogstop(int cog)
 {
     if (__cog_running[cog]) {
-        pthread_cancel(__cogs[cog]);
-        pthread_join(__cogs[cog], NULL);
         __cog_running[cog] = false;
+        //pthread_cancel(__cogs[cog]);
+        pthread_join(__cogs[cog], NULL);
     }
+}
+
+bool _cogrunning(int cog)
+{
+    return __cog_running[cog];
 }
 
 void _pinw(int pin, int val)
@@ -190,7 +216,7 @@ int _pinr(int pin)
 {
     if (__gpio[pin].mode == P_ASYNC_RX) {
         // Check if there is data in the queue
-        int data = 0;
+        uint8_t data = 0;
         socketio_receive(__gpio[pin].socket_id, &data, 1);
         return data;
     }
@@ -238,10 +264,8 @@ void _pinstart(int pin, uint32_t mode, uint32_t xval, uint32_t yval)
     // Currently only used for force gauge, soft implementation
     if (mode == P_ASYNC_RX) {
         __gpio[pin].mode = mode;
-        // Create a new socket
-        char id[64] = "\0";
-        sprintf(id, "Serial-%u\n", pin);
-        __gpio[pin].socket_id = socketio_create_socket(id);
+        DEBUG_INFO("Starting pin RX: %d\n", pin);
+        __gpio[pin].socket_id = socketio_create_socket(pin);
 
         if (__gpio[pin].socket_id == -1)
         {
@@ -259,12 +283,13 @@ void _pinclear(int pin)
 {
     // Currently only used for force gauge, soft implementation
     if (__gpio[pin].mode == P_ASYNC_RX) {
+        DEBUG_INFO("Clearing pin RX: %d\n", pin);
         __gpio[pin].mode = 0;
         socketio_close(__gpio[pin].socket_id);
     }
     else
     {
-        perror("Error clearing pin, not implemented");
+       //perror("Error clearing pin, not implemented");
     }
 }
 
@@ -324,6 +349,6 @@ void * _vfs_open_sdcard()
 
 void _reboot()
 {
-    printf("Rebooting...\n");
+    DEBUG_INFO("%s", "Rebooting...\n");
     exit(0);
 }

@@ -58,7 +58,7 @@ bool lock_machine_profile_ms(MachineProfile ** profile, int ms)
     {
         if (_getms() - start > ms)
         {
-            DEBUG_ERROR("%s","Failed to lock machine profile, waited %dms\n", ms);
+            DEBUG_ERROR("Failed to lock machine profile, waited %dms\n", _getms() - start);
             return false;
         }
     }
