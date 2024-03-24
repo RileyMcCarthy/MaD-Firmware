@@ -101,3 +101,8 @@ void fds_tx(FullDuplexSerial *self, uint8_t byte)
     }
     return;
 }
+
+void fds_flush(FullDuplexSerial *self)
+{
+    queue_empty(&(self->rx_queue));
+}

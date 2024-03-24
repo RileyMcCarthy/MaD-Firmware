@@ -48,6 +48,7 @@ static uint8_t read_register(ForceGauge *forceGauge, uint8_t reg)
 
 static bool force_gauge_reset(ForceGauge *forceGauge)
 {
+    //DEBUG_ERROR("%s","Force Gauge Reset\n");
     fds_start(&(forceGauge->serial), forceGauge->rx, forceGauge->tx, 0, BAUD);
     fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
     fds_tx(&(forceGauge->serial), 0x01); // RESET
@@ -59,8 +60,9 @@ static bool force_gauge_reset(ForceGauge *forceGauge)
     write_register(forceGauge, CONFIG_2, CONFIG_DATA2); // Setting data counter on
     write_register(forceGauge, CONFIG_3, CONFIG_DATA3); // Setting data counter on
     //write_register(forceGauge, CONFIG_4, CONFIG_DATA4); // Setting data counter on CHANGED
-    fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
-    fds_tx(&(forceGauge->serial), 0x08);
+
+    fds_flush(&(forceGauge->serial));
+
     int temp;
     if ((temp = read_register(forceGauge, CONFIG_1)) != CONFIG_DATA1)
     {
@@ -70,8 +72,12 @@ static bool force_gauge_reset(ForceGauge *forceGauge)
         return false;
     }
 
+    fds_tx(&(forceGauge->serial), 0x55); // Synchronization word
+    fds_tx(&(forceGauge->serial), 0x08);
+
     _waitms(100);
     fds_stop(&(forceGauge->serial));
+    DEBUG_ERROR("%s","Force Gauge Reset Complete\n");
     return true;
 }
 
@@ -99,7 +105,6 @@ static void continuous_data(void *arg)
             DEBUG_ERROR("%s","Force gauge cog stopped\n");
             break;
         }
-        DEBUG_ERROR("%s","Force gauge cog running\n");
         while (!_pinr(rx))
         {
             if ((_cnt() - lastData) > disconnecttx)
@@ -134,6 +139,7 @@ static void continuous_data(void *arg)
             forceGauge->counter++;
             data = 0;
             index = 0;
+            DEBUG_INFO("Force: %d\n", forceGauge->forceRaw);
         }
     }
 }

@@ -101,38 +101,19 @@ static bool send(int cmd, char *buf, uint16_t size)
     return true;
 }
 
-static int recieveCMD()
+static bool communication_private_recieve_command(uint8_t *cmd)
 {
-    while (1)
+    bool command_recieved = false;
+    if (fds_rxcheck(&fds))
     {
-        #ifdef __EMULATION__
-            _waitms(10);
-        #endif
-        int res;
-        do
+        int res = fds_rxtime(&fds, 10);
+        if (res > 0)
         {
-            #ifdef __EMULATION__
-            _waitms(10);
-            #endif
-            set_communication_status(_getms());
-            Notification notification;
-            if (queue_pop(&notification_queue, &notification))
-            {
-                char * notification_json = notification_to_json(&notification);
-                if (notification_json == NULL)
-                {
-                    continue;
-                }
-                send(CMD_NOTIICATION, notification_json, strlen(notification_json));
-                unlock_json_buffer();
-            }
-        } while ((res = fds_rxtime(&fds, 10)) != 0x55);
-        int cmd = fds_rxtime(&fds, 10);
-        if (cmd != -1)
-        {
-            return cmd;
+            *cmd = (uint8_t)res;
+            command_recieved = true;
         }
     }
+    return command_recieved;
 }
 static char awk_buf[100]; // Should use json encode buffer
 static void send_awk(uint8_t cmd, const char *awk)
@@ -515,19 +496,36 @@ static void beginCommunication(void *arg)
     fds_start(&fds, RPI_RX, RPI_TX, 0, 115200);
     while (1)
     {
-        #ifdef __EMULATION__
-            _waitms(10);
-        #endif
-        DEBUG_INFO("%s","Waiting for command\n");
-        int cmd = recieveCMD();
-        DEBUG_INFO("cmd:%d,write:%d\n", (cmd & ~CMD_WRITE), ((cmd & CMD_WRITE) == CMD_WRITE));
-        if ((cmd & CMD_WRITE) != CMD_WRITE)
+        // Let watchdog know we are running ok
+        set_communication_status(_getms());
+
+        // Recieve any incommand commands
+        uint8_t cmd = 0;
+        const bool command_recieved = communication_private_recieve_command(&cmd);
+        if (command_recieved)
         {
-            command_respond(cmd);
+            DEBUG_INFO("cmd:%d,write:%d\n", (cmd & ~CMD_WRITE), ((cmd & CMD_WRITE) == CMD_WRITE));
+            if ((cmd & CMD_WRITE) != CMD_WRITE)
+            {
+                command_respond(cmd);
+            }
+            else
+            {
+                command_recieve(cmd & ~CMD_WRITE);
+            }
         }
-        else
+
+        // Send any notifications
+        Notification notification;
+        if (queue_pop(&notification_queue, &notification))
         {
-            command_recieve(cmd & ~CMD_WRITE);
+            char * notification_json = notification_to_json(&notification);
+            if (notification_json == NULL)
+            {
+                continue;
+            }
+            send(CMD_NOTIICATION, notification_json, strlen(notification_json));
+            unlock_json_buffer();
         }
     }
 }

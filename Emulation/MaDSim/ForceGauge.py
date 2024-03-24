@@ -18,7 +18,7 @@ class SimulatedADS122U04(AsyncHandler):
             # Add more registers as needed
         }
         self.data = []
-        #sim_loop.create_task(self.send_data_loop())
+        sim_loop.create_task(self.send_data_loop())
         self.continuous_data = False
 
     def clear_data(self):
@@ -35,8 +35,8 @@ class SimulatedADS122U04(AsyncHandler):
     async def send_data_loop(self):
         while True:
             if self.continuous_data:
-                await self.tx(bytes([0x55, 0x00, 0x10, 0x01]))
-            await asyncio.sleep(0.1)
+                self.tx(bytes([0x55, 0x00, 0x10, 0x01]))
+            await asyncio.sleep(0.01)
 
     def process_serial_data(self, byte: bytes):
         res = None
@@ -54,14 +54,17 @@ class SimulatedADS122U04(AsyncHandler):
                 # some command, do something
                 logger.info("executing command 0x01")
                 self.clear_data()
+                self.continuous_data = False
             elif self.data[1] == 0x06:
-                # some command, do something
+                # reset ads122u04
                 logger.info("executing command 0x06")
                 self.clear_data()
+                self.continuous_data = False
             elif self.data[1] == 0x08:
                 # continuous data mode
                 # create a thread to send data continuously
                 logger.info("executing command 0x08")
+                self.continuous_data = True
                 self.clear_data()
             elif command == 0b0010:
                 # Simulate read operation

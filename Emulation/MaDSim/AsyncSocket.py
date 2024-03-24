@@ -15,11 +15,11 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
         self.lock = asyncio.Lock()
     
     # override of AsyncHandler method
-    async def rx(self, data: bytes) -> bytes:
+    def rx(self, data: bytes) -> bytes:
         try:
-            await self.send(data)
+            self.send(data)
         except Exception as e:
-            logger.error(f"Error sending data: {e}")
+            logger.error(f"Error sending data {self.host}:{self.port}: {e}")
         return None
 
     def connection_made(self, transport):
@@ -28,17 +28,18 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
 
     def data_received(self, data):
         resp = self.tx(data)
-        logger.info(f'Received data from force gauge: {data}')
+        logger.info(f'Received data from socket: {data} and sending response: {resp}')
         if resp is not None:
             self.send(resp)
 
     def send(self, data):
             if self.transport is not None:
-                logger.info(f'Sending data over transport: {data}')
+                #logger.info(f'Sending data over transport: {data}')
                 self.transport.write(data)
 
     def connection_lost(self, exc):
-        print(f'The server closed the connection: {self.host}:{self.port}')
+        logger.warn(f'The server closed the connection: {self.host}:{self.port}')
+        self.transport = None
 
     async def start_server(self):
         self.server = await sim_loop.create_server(

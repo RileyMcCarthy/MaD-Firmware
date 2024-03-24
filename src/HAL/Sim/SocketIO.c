@@ -11,7 +11,7 @@
 #include "Utility/Debug.h"
 
 static char socket_ip[64] = "127.0.0.1";
-static int socket_port_base = 9100;
+static int socket_port_base = 9200;
 
 void socketio_send_str(int32_t socket_id, char* data)
 {
@@ -59,6 +59,35 @@ void socketio_close(int32_t socket_id)
 {
     // Close the socket
     close(socket_id);
+}
+
+bool socketio_poll(int32_t socket_id)
+{
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(socket_id, &readfds);
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;  // Set the timeout to 10 second
+    timeout.tv_usec = 0;
+
+    int ready = select(socket_id + 1, &readfds, NULL, NULL, &timeout);
+
+    if (ready > 0 && FD_ISSET(socket_id, &readfds))
+    {
+        return true;
+    }
+    else if (ready == 0)
+    {
+        // Timeout occurred
+        return false;
+    }
+    else
+    {
+        // Handle error or connection closed
+        perror("Error in select");
+        return false;
+    }
 }
 
 int32_t socketio_receive(int32_t socket_id, uint8_t* data, uint16_t length)

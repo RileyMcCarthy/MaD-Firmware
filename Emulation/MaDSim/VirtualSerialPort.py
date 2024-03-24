@@ -39,8 +39,8 @@ class VirtualSerialPort(AsyncHandler):
     def send(self, data):
         if self.is_running():
             port = f"{SERIAL_PORT_PATH}{self.link1}"
-            with open(port, "rb") as f:
-                return f.read()
+            with open(port, 'wb') as f:
+                f.write(data)
         else:
             logger.error("Virtual serial port is not running")
             return None

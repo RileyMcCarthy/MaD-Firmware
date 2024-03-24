@@ -28,3 +28,8 @@ void fds_tx(FullDuplexSerial *self, uint8_t c)
     self->tx(c);
 }
 
+void fds_flush(FullDuplexSerial *self)
+{
+    self->rxflush();
+}
+

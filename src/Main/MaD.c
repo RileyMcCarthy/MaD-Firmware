@@ -66,7 +66,7 @@ void mad_begin()
   }
 
   DEBUG_INFO("%s","Starting serial communication\n");
-  //start_communication();
+  start_communication();
   DEBUG_NOTIFY("%s","MaD Firmware Started\n");
   state_machine_set(PARAM_SELF_CHARGE_PUMP, true);
   monitor_begin(10);

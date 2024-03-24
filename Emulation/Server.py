@@ -3,7 +3,7 @@ from time import sleep
 
 # The base port should be sent to firmware cause it sometimes has conflicts with existing ports
 # MAYBE ONCE STABLE RUN IN DOCKER
-socket_port_base = 9100
+socket_port_base = 9200
 
 # Build firmware
 firmware = MaDSim.FirmwareRunner("emulator", "../")

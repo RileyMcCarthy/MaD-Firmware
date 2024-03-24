@@ -216,9 +216,7 @@ int _pinr(int pin)
 {
     if (__gpio[pin].mode == P_ASYNC_RX) {
         // Check if there is data in the queue
-        uint8_t data = 0;
-        socketio_receive(__gpio[pin].socket_id, &data, 1);
-        return data;
+        return socketio_poll(__gpio[pin].socket_id);
     }
     else
     {
@@ -249,7 +247,16 @@ void _akpin(int pin)
 
 uint32_t _rdpin(int pin)
 {
-    // @TODO implement
+    if (__gpio[pin].mode == P_ASYNC_RX) {
+    // Check if there is data in the queue
+    uint8_t data = 0;
+    socketio_receive(__gpio[pin].socket_id, &data, 1);
+    return (uint32_t)data << 24;
+    }
+    else
+    {
+        //perror("Error reading pin, not implemented");
+    }
     return 0;
 }
 

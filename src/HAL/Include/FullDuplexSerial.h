@@ -10,5 +10,6 @@ bool fds_rxcheck(FullDuplexSerial *self);
 uint8_t fds_rx(FullDuplexSerial *self);
 uint8_t fds_rxtime(FullDuplexSerial *self, uint32_t timeout);
 void fds_tx(FullDuplexSerial *self, uint8_t c);
+void fds_flush(FullDuplexSerial *self);
 
 #endif // FullDuplexSerial_H
