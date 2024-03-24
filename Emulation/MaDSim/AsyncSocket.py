@@ -7,6 +7,7 @@ from .Async import AsyncHandler
 
 class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
     def __init__(self, host='localhost', port=8888):
+        super().__init__()
         self.host = host
         self.port = port
         self.server = None
@@ -20,17 +21,14 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
             self.send(data)
         except Exception as e:
             logger.error(f"Error sending data {self.host}:{self.port}: {e}")
-        return None
 
     def connection_made(self, transport):
         logger.info(f'Socket connection made: {self.host}:{self.port}')
         self.transport = transport
 
     def data_received(self, data):
-        resp = self.tx(data)
-        logger.info(f'Received data from socket: {data} and sending response: {resp}')
-        if resp is not None:
-            self.send(resp)
+        # need to offload work from data recieved
+        self.tx(data)
 
     def send(self, data):
             if self.transport is not None:

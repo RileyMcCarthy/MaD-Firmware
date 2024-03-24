@@ -25,7 +25,6 @@ static void fds_thread(void *arg)
             socketio_send(self->socket_id, byte);
         }
         //printf("Serial thread\n");
-        _waitus(10000);
     }
 }
 

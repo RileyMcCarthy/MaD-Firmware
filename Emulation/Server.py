@@ -16,10 +16,13 @@ MaDSim.AsyncConnector(forceGauge, force_async_server)
 force_async_server.run()
 
 rpi_pin = 53
-rpi_serial = MaDSim.VirtualSerialPort("rpi_client", "rpi")
+#rpi_serial = MaDSim.VirtualSerialPort("rpi_client", "rpi") run it manually, its easier lol
+sleep(3)
+rpi_async_serial_server = MaDSim.AsyncSerialServer("rpi_client")
 rpi_async_server = MaDSim.AsyncSocketServer("localhost", socket_port_base + rpi_pin)
-MaDSim.AsyncConnector(rpi_serial, rpi_async_server)
-rpi_serial.start() 
+MaDSim.AsyncConnector(rpi_async_serial_server, rpi_async_server)
+#rpi_serial.start()
+rpi_async_serial_server.run()
 rpi_async_server.run()
 
 sleep(1)
@@ -30,6 +33,12 @@ try:
     while True:
         if not firmware.is_running():
             MaDSim.logger.error("Firmware has stopped, Exiting server process")
+            break
+        #if not rpi_serial.is_running():
+        #    MaDSim.logger.error("RPI VSP has stopped, Exiting server process")
+        #    break
+        if not rpi_async_serial_server.is_running():
+            MaDSim.logger.error("RPI async serial server has stopped, Exiting server process")
             break
         if not rpi_async_server.is_running():
             MaDSim.logger.error("RPI async server has stopped, Exiting server process")

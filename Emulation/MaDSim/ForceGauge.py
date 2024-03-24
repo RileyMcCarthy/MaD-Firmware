@@ -39,7 +39,6 @@ class SimulatedADS122U04(AsyncHandler):
             await asyncio.sleep(0.01)
 
     def process_serial_data(self, byte: bytes):
-        res = None
         # Append the byte to the bytearray
         self.data.append(byte)
         logger.info(f'Current data: {self.data}')
@@ -69,6 +68,7 @@ class SimulatedADS122U04(AsyncHandler):
             elif command == 0b0010:
                 # Simulate read operation
                 res = self.read_register(register_address)
+                self.tx(bytes([res]))
                 logger.info(f"Read register {register_address} with value {res}")
                 self.clear_data()
             elif command == 0b0100:
@@ -84,12 +84,7 @@ class SimulatedADS122U04(AsyncHandler):
         else:
             logger.info("no commands with 4 bytes")
             self.clear_data()
-        return res
     
     def rx(self, data: bytes) -> bytes:
         for byte in data:
-            res = self.process_serial_data(byte)
-            if res is not None:
-                return bytes([res])
-            else:
-                return None
+            self.process_serial_data(byte)

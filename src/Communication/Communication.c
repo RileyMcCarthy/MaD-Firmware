@@ -106,11 +106,15 @@ static bool communication_private_recieve_command(uint8_t *cmd)
     bool command_recieved = false;
     if (fds_rxcheck(&fds))
     {
-        int res = fds_rxtime(&fds, 10);
-        if (res > 0)
+        int sync = fds_rxtime(&fds, 10);
+        if (sync == 0x55)
         {
-            *cmd = (uint8_t)res;
-            command_recieved = true;
+            int res = fds_rxtime(&fds, 10);
+            if (res > 0)
+            {
+                *cmd = (uint8_t)res;
+                command_recieved = true;
+            }
         }
     }
     return command_recieved;
@@ -308,7 +312,7 @@ static void command_respond(uint8_t cmd)
     }
     default:
     {
-        DEBUG_WARNING("%s","Write Command not found\n");
+        DEBUG_WARNING("Write Command not found: %d\n", cmd);
         break;
     }
     }

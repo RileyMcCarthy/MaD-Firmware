@@ -139,7 +139,7 @@ static void continuous_data(void *arg)
             forceGauge->counter++;
             data = 0;
             index = 0;
-            DEBUG_INFO("Force: %d\n", forceGauge->forceRaw);
+            //DEBUG_INFO("Force: %d\n", forceGauge->forceRaw);
         }
     }
 }

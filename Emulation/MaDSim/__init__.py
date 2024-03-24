@@ -13,6 +13,8 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
+SERIAL_PORT_PATH = "/tmp/tty."
+
 from MaDSim.AsyncHandler import AsyncLoopHandler
 async_handler = AsyncLoopHandler()
 async_handler.start_loop()
@@ -24,3 +26,4 @@ from MaDSim.PIORunner import FirmwareRunner
 from MaDSim.Async import AsyncHandler, AsyncConnector
 from MaDSim.AsyncSocket import AsyncSocketServer
 from MaDSim.ForceGauge import SimulatedADS122U04
+from MaDSim.AsyncSerial import AsyncSerialServer

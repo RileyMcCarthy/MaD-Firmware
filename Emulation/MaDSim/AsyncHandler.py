@@ -23,8 +23,7 @@ class AsyncLoopHandler:
             self.loop = None
 
     def handle_exception(self, loop, context):
-        msg = context.get("exception", context["message"])
-        logger.error(f"Caught exception: {msg}")
+        logger.error(f"Caught exception: {context}")
         logger.error(f"Stopping the loop")
         self.stop_loop()
 
