@@ -15,7 +15,7 @@ void set_gauge_force();
 void monitor_send_move(int g, int x, int f, int p);
 void monitor_run_test();
 bool monitor_set_header(char *h);
-bool monitor_set_test_name(char *name);
+bool monitor_set_test_name(const char *name);
 
 // API for reading and writing machine profiles to SD card
 bool read_sd_profile(MachineProfile * profile);

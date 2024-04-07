@@ -22,7 +22,7 @@ static bool json_to_self_check_parameters(const json_t *json, SelfCheckParameter
 static bool json_to_machine_check_parameters(const json_t *json, MachineCheckParameters *parameters)
 {
     bool success = true;
-    char *property = NULL;
+    const char *property = NULL;
     success &= json_property_to_string_ref(json, "ESD Chain",&property);
     parameters->esdChain = string_to_esd_chain(property);
     success &= json_property_to_bool(json, "Servo OK",&(parameters->servoOK));
@@ -34,7 +34,7 @@ static bool json_to_machine_check_parameters(const json_t *json, MachineCheckPar
 static bool json_to_motion_parameters(const json_t *json, MotionParameters *parameters)
 {
     bool success = true;
-    char *property = NULL;
+    const char *property = NULL;
     success &= json_property_to_string_ref(json, "Status", &property);
     parameters->status = string_to_motion_status(property);
     
@@ -116,8 +116,8 @@ bool json_to_machine_profile(MachineProfile *profile, char *json)
     DEBUG_INFO("Machine Profile Name: %s\n", profile->name);
 
     const json_t *mcParser = json_getProperty(parser, "Configuration");
-    DEBUG_INFO("Machine Configuration: %p\n", mcParser);
-    if (!mcParser || JSON_OBJ != json_getType(mcParser))
+    const jsonType_t machine_configuration_type = json_getType(mcParser);
+    if ((mcParser == NULL) || (machine_configuration_type != JSON_OBJ))
     {
         DEBUG_ERROR("%s","Error, the  Machine Configuration  property is not found.\n");
         return false;
@@ -192,12 +192,14 @@ bool json_to_test_data_request(TestDataRequest *request, char *json)
     const json_t *parser = json_create_static(json);
 
     bool success = true;
-    success &= json_property_to_int(parser, "Index", &(request->index));
-    success &= json_property_to_int(parser, "Count", (int *)&(request->count));
+    int index = request->index;
+    int count = request->count;
+    success &= json_property_to_int(parser, "Index", &index);
+    success &= json_property_to_int(parser, "Count", &count);
     return success;
 }
 
-bool json_to_test_header_name(char *name, char *json)
+bool json_to_test_header_name(const char **name, char *json)
 {
     // Use tiny-json to parse the string
     const json_t *parser = json_create_static(json);
@@ -211,7 +213,7 @@ bool json_to_motion_mode(MotionMode *mode, char *json)
     const json_t *parser = json_create_static(json);
 
     bool success = true;
-    char *property;
+    const char *property;
     success &= json_property_to_string_ref(parser, "Mode", &property);
     *mode = string_to_motion_mode(property);
     return success;
@@ -223,7 +225,7 @@ bool json_to_motion_status(MotionStatus *status, char *json)
     const json_t *parser = json_create_static(json);
 
     bool success = true;
-    char *property = NULL;
+    const char *property = NULL;
     success &= json_property_to_string_ref(parser, "Status", &property);
     *status = string_to_motion_status(property);
     return success;

@@ -105,9 +105,9 @@ bool lock_sd_card(MonitorSDCard ** data)
     return true;
 }
 
-bool lock_sd_card_ms(MonitorSDCard ** data, int ms)
+bool lock_sd_card_ms(MonitorSDCard ** data, uint32_t ms)
 {
-    int start = _getms();
+    uint32_t start = _getms();
     while (!lock_sd_card(data))
     {
         if (_getms() - start > ms)
@@ -135,7 +135,7 @@ SDCardState * unlock_and_monitor_sd_card()
 bool unlock_sd_card()
 {
     MonitorSDCard * sdcard;
-    if (!lock_sd_card_ms(&sdcard,10))
+    if (!lock_sd_card_ms(&sdcard,10U))
     {
         DEBUG_ERROR("%s","Resource allocated, this should not happen!\n");
         return false;

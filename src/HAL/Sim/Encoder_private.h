@@ -2,8 +2,8 @@
 #include <stdbool.h>
 
 typedef struct Encoder_e {
-    uint8_t pinA;
-    uint8_t pinB;
+    int32_t socket_a;
+    int32_t socket_b;
     uint8_t btn;
     bool d4x;
     int32_t preset;

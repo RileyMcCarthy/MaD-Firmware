@@ -31,12 +31,20 @@ class FirmwareRunner:
             logger.error("Error building firmware")
             exit(1)
     
+    def clean(self):
+        try:
+            subprocess.check_call(['pio', 'run', '-t', 'clean', '--project-dir', self.directory])
+        except subprocess.CalledProcessError:
+            # There was an error - command exited with non-zero code
+            logger.error("Error cleaning firmware")
+            exit(1)
+    
     def run(self):
         # Start the C program as a subprocess
         if self.running:
             self.stop()
         self.running = True
-        self.c_process = subprocess.Popen(f'leaks -atExit -- {self.directory}/.pio/build/{self.env}/program', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
+        self.c_process = subprocess.Popen(f'{self.directory}/.pio/build/{self.env}/program', stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, universal_newlines=True)
 
         # Create a thread to continuously read and print the output
         self.monitor_thread = threading.Thread(target=self._read_output, args=(self.c_process,))

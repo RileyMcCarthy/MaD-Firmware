@@ -2,12 +2,12 @@
 class AsyncHandler:
     tx_callback = None
     def rx(self, data: bytes) -> bytes:
-        raise NotImplementedError
+        pass
     def tx(self, data: bytes) -> bytes:
         if self.tx_callback:
             return self.tx_callback(data)
         else:
-            raise NotImplementedError
+            pass
     def set_tx_callback(self, callback):
         self.tx_callback = callback
 

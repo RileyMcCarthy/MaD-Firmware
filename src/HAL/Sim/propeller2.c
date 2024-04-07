@@ -15,7 +15,7 @@
 #define CLOCK_FREQ 180000000
 #define MAX_COGS 8
 static pthread_t __cogs[MAX_COGS];
-static bool __cog_running[MAX_COGS];
+static bool __cog_running[MAX_COGS] = {false};
 static volatile uint32_t __microseconds = 0;
 
 #define MAX_LOCKS 8
@@ -27,9 +27,16 @@ typedef struct {
     uint32_t xval;
     uint32_t yval;
     int32_t socket_id;
+    uint8_t state;
 } GPIO;
 
 static GPIO __gpio[64] = {0};
+
+int32_t get_pin_socketid(int pin)
+{
+    return __gpio[pin].socket_id;
+
+}
 
 // New thread function to increment the microseconds counter
 static void * incrementMicroseconds(void* arg) {
@@ -42,11 +49,21 @@ static void * incrementMicroseconds(void* arg) {
 }
 
 // Initialization function to start the microseconds incrementing thread
-void initMicroseconds() {
+void init_simulator() {
     pthread_t thread;
     if (pthread_create(&thread, NULL, incrementMicroseconds, NULL) != 0) {
         perror("Error creating microseconds incrementing thread");
         exit(EXIT_FAILURE);
+    }
+    for (uint8_t pin = 0; pin < 64; pin++)
+    {
+        __gpio[pin].socket_id = socketio_create_socket(pin);
+
+        if (__gpio[pin].socket_id == -1)
+        {
+            perror("Error creating socket for pin");
+            exit(0);
+        }
     }
 }
 
@@ -134,7 +151,7 @@ int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_s
     // Find the next available cog
     uint8_t cog = MAX_COGS;
     for (uint8_t i = 0; i < MAX_COGS; i++) {
-        if (__cog_running[cog] == false) {
+        if (__cog_running[i] == false) {
             cog = i;
             break;
         }
@@ -177,11 +194,6 @@ void _cogstop(int cog)
     }
 }
 
-bool _cogrunning(int cog)
-{
-    return __cog_running[cog];
-}
-
 void _pinw(int pin, int val)
 {
     // @TODO implement
@@ -189,12 +201,12 @@ void _pinw(int pin, int val)
 
 void _pinl(int pin)
 {
-    // @TODO implement
+    socketio_send(__gpio[pin].socket_id, 0);
 }
 
 void _pinh(int pin)
 {
-    // @TODO implement
+    socketio_send(__gpio[pin].socket_id, 1);
 }
 
 void _pinnot(int pin)
@@ -214,15 +226,31 @@ void _pinf(int pin)
 
 int _pinr(int pin)
 {
+    int pin_state = 0;
     if (__gpio[pin].mode == P_ASYNC_RX) {
         // Check if there is data in the queue
-        return socketio_poll(__gpio[pin].socket_id);
+        pin_state = socketio_poll(__gpio[pin].socket_id);
     }
     else
     {
-        //perror("Error reading pin, not implemented");
+        uint8_t buffer[1];
+        int bytes_received = 0;
+        bool data_available = false;
+        while (socketio_poll(__gpio[pin].socket_id))
+        {
+            bytes_received = socketio_receive(__gpio[pin].socket_id, buffer, 1);
+            data_available = true;
+            DEBUG_ERROR("Bytes received on pin %d: %d\n", pin, bytes_received);
+        }
+
+        if (data_available) {
+            __gpio[pin].state = buffer[0];
+        }
+
+        // The last byte received is in buffer[0]
+        pin_state = __gpio[pin].state;
     }
-    return 0;
+    return pin_state;
 }
 
 void _wrpin(int pin, uint32_t val)
@@ -248,10 +276,10 @@ void _akpin(int pin)
 uint32_t _rdpin(int pin)
 {
     if (__gpio[pin].mode == P_ASYNC_RX) {
-    // Check if there is data in the queue
-    uint8_t data = 0;
-    socketio_receive(__gpio[pin].socket_id, &data, 1);
-    return (uint32_t)data << 24;
+        // Check if there is data in the queue
+        uint8_t data = 0;
+        socketio_receive(__gpio[pin].socket_id, &data, 1);
+        return (uint32_t)data << 24;
     }
     else
     {
@@ -272,13 +300,6 @@ void _pinstart(int pin, uint32_t mode, uint32_t xval, uint32_t yval)
     if (mode == P_ASYNC_RX) {
         __gpio[pin].mode = mode;
         DEBUG_INFO("Starting pin RX: %d\n", pin);
-        __gpio[pin].socket_id = socketio_create_socket(pin);
-
-        if (__gpio[pin].socket_id == -1)
-        {
-            perror("Error creating socket for pin");
-            __gpio[pin].mode = 0;
-        }
     }
     else
     {
@@ -292,7 +313,7 @@ void _pinclear(int pin)
     if (__gpio[pin].mode == P_ASYNC_RX) {
         DEBUG_INFO("Clearing pin RX: %d\n", pin);
         __gpio[pin].mode = 0;
-        socketio_close(__gpio[pin].socket_id);
+        //socketio_close(__gpio[pin].socket_id);
     }
     else
     {
@@ -344,6 +365,7 @@ int umount(char *user_name) {
     {
         return -1; // "sd card" already mounted, error
     }
+    fclose(fptr); // Close the lock file
     remove("_mount.lock"); // Remove the lock file
     return 0;
 }

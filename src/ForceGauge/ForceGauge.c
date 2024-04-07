@@ -86,7 +86,6 @@ static void continuous_data(void *arg)
 {
     ForceGauge *forceGauge = (ForceGauge *)arg;
     int rx = forceGauge->rx;
-    int tx = forceGauge->tx;
     int data = 0;
     int index = 0;
     int delay = (_clockfreq() / BAUD) / 2;
@@ -99,12 +98,6 @@ static void continuous_data(void *arg)
     uint32_t lastData = _cnt();
     while (1)
     {
-        // need to ifdef under emulator
-        if (_cogrunning(forceGauge->cogid) == false)
-        {
-            DEBUG_ERROR("%s","Force gauge cog stopped\n");
-            break;
-        }
         while (!_pinr(rx))
         {
             if ((_cnt() - lastData) > disconnecttx)

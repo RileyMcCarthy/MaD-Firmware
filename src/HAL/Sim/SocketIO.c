@@ -51,7 +51,6 @@ int32_t socketio_create_socket(int rxpin)
         DEBUG_INFO("Error in connection to %s:%d\n", socket_ip, port);
         perror("Error in connection");
     }
-    DEBUG_INFO("Connected to %s:%d\n", socket_ip, port);
     return socket_id;
 }
 
@@ -85,7 +84,7 @@ bool socketio_poll(int32_t socket_id)
     else
     {
         // Handle error or connection closed
-        perror("Error in select");
+        //perror("Error in select");
         return false;
     }
 }
@@ -104,13 +103,13 @@ int32_t socketio_receive(int32_t socket_id, uint8_t* data, uint16_t length)
 
     if (ready > 0 && FD_ISSET(socket_id, &readfds))
     {
-        int16_t bytes_received = recv(socket_id, data, length, 0);
+        int32_t bytes_received = recv(socket_id, data, length, 0);
         if (bytes_received < 0)
         {
             perror("Error in receiving");
             bytes_received = 0;
         }
-        return (uint16_t)bytes_received;
+        return bytes_received;
     }
     else if (ready == 0)
     {

@@ -102,7 +102,8 @@ void	  _reboot(void);
 int       _coginit(int cog, void *pgm, void *ptr);
 #define _cognew(pgm, ptr) _coginit(ANY_COG, pgm, ptr)
 
-void initMicroseconds();
+void init_simulator();
+int32_t get_pin_socketid(int pin);
 
 /* start C code in another COG */
 int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_size);
@@ -112,7 +113,6 @@ int _cogstart(void (*func)(void*), void* arg, void* stack_base, uint32_t stack_s
 #define _cogstart_C(func, arg, stack, size) _cogstart(func, arg, stack, size)
 
 /* stop/check status of COGs */
-bool _cogrunning(int cog);
 void      _cogstop(int cog);
 int       _cogchk(int cog);
 int       _cogid(void);

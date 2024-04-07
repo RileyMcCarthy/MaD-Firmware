@@ -35,7 +35,7 @@ bool fds_start(FullDuplexSerial *self, uint8_t rxpin, uint8_t txpin, uint8_t mod
     {
         self->rxpin = rxpin;
         DEBUG_INFO("Serial started: %d\n", rxpin);
-        self->socket_id = socketio_create_socket(rxpin);
+        self->socket_id = get_pin_socketid(rxpin);
 
         if (self->socket_id > 0)
         {
@@ -61,7 +61,6 @@ void fds_stop(FullDuplexSerial *self)
         _cogstop(self->cog_id);
     }
     self->isRunning = false;
-    socketio_close(self->socket_id);
     DEBUG_INFO("Serial stopped: %d\n", self->rxpin);
 }
 

@@ -23,7 +23,7 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
             logger.error(f"Error sending data {self.host}:{self.port}: {e}")
 
     def connection_made(self, transport):
-        logger.info(f'Socket connection made: {self.host}:{self.port}')
+        #logger.info(f'Socket connection made: {self.host}:{self.port}')
         self.transport = transport
 
     def data_received(self, data):
@@ -45,14 +45,14 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
             self.host,
             self.port
         )
-        logger.info(f'Socket server started on {self.host}:{self.port}')
+        #logger.info(f'Socket server started on {self.host}:{self.port}')
     
     def is_running(self):
         return self.running
 
     def run(self):
         try:
-            logger.info('Starting socket server')
+            #logger.info('Starting socket server')
             self.running = True
             asyncio.run_coroutine_threadsafe(self.start_server(), sim_loop)
         except RuntimeError:

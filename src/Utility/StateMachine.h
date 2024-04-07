@@ -107,12 +107,12 @@ bool state_machine_equal(MachineState *machineState1, MachineState *machineState
 char * machine_state_to_string(State state);
 State string_to_machine_state(char *state);
 char * motion_status_to_string(MotionStatus motionStatus);
-MotionStatus string_to_motion_status(char *motionStatus);
+MotionStatus string_to_motion_status(const char *motionStatus);
 char * esd_chain_to_string(ESDChain esdChain);
-ESDChain string_to_esd_chain(char *esdChain);
+ESDChain string_to_esd_chain(const char *esdChain);
 char * motion_condition_to_string(MotionCondition motionCondition);
-MotionCondition string_to_motion_condition(char *motionCondition);
+MotionCondition string_to_motion_condition(const char *motionCondition);
 char * motion_mode_to_string(MotionMode motionMode);
-MotionMode string_to_motion_mode(char *motionMode);
+MotionMode string_to_motion_mode(const char *motionMode);
 
 #endif

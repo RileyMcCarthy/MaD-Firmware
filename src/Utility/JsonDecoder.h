@@ -16,7 +16,7 @@ bool json_to_machine_configuration(MachineConfiguration *configuration, char *js
 bool json_to_machine_performance(MachinePerformance *performance, char *json);
 bool json_to_sample_profile(SampleProfile *sample, char *json);
 bool json_to_test_data_request(TestDataRequest *request, char *json);
-bool json_to_test_header_name(char *name, char *json);
+bool json_to_test_header_name(const char **name, char *json);
 bool json_to_motion_mode(MotionMode *mode, char *json);
 bool json_to_motion_status(MotionStatus *status, char *json);
 bool json_to_move(Move *move, char *json);

@@ -26,9 +26,8 @@ static char header[512] = "";
 static char test_path[219] = MOUNT_PATH "/test.csv";
 
 static const char profile_path[] = MOUNT_PATH "/profile.bin";
-static const char test_path_bin[] = MOUNT_PATH "/test.bin";
 
-bool monitor_set_test_name(char *name)
+bool monitor_set_test_name(const char *name)
 {
   if (strlen(name) > 8)
   {
@@ -37,9 +36,11 @@ bool monitor_set_test_name(char *name)
   }
   
   strncpy(test_path, MOUNT_PATH, strlen(MOUNT_PATH)+1);
-  strncpy(test_path, "/", 5);
+  strncat(test_path, "/", 5);
   strncat(test_path, name, 8);
   strncat(test_path, ".csv", 4);
+  DEBUG_ERROR("Test path: %s\n", test_path);
+  DEBUG_ERROR("Test name: %s\n", MOUNT_PATH);
   return true;
 }
 
@@ -93,7 +94,7 @@ static bool get_force(int lastLog)
 static void read_sd()
 {
   MonitorSDCard *sd_card = NULL;
-  if (!lock_sd_card_ms(&sd_card,10))
+  if (!lock_sd_card_ms(&sd_card,10U))
   {
     DEBUG_ERROR("%s","Failed to lock monitor sd card, something is taking too long...\n");
     return;
@@ -137,54 +138,54 @@ static void read_sd()
       }
     case SD_CARD_READ_DATA:
       {
-        FILE *file = fopen(test_path_bin, "r");
-        if (file == NULL)
-        {
-          DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
-        
-        fseek(file, sd_card->read_data_index * sizeof(MonitorData), SEEK_SET);
-        if (sd_card->sd_card_data == NULL)
-        {
-          DEBUG_ERROR("%s","sd_card_data is null\n");
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
-        size_t n = fread(sd_card->sd_card_data, sizeof(MonitorData), sd_card->read_data_count, file);
-        fclose(file);
-        sd_card->read_data_count = n/sizeof(MonitorData);
-        if (sd_card->read_data_count <= 0)
-        {
-          DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
-        sd_card->sd_card_state = SD_CARD_SUCCESS;
+       // FILE *file = fopen(test_path_bin, "r");
+       // if (file == NULL)
+       // {
+       //   DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
+       //   sd_card->sd_card_state = SD_CARD_ERROR;
+       //   break;
+       // }
+       // 
+       // fseek(file, sd_card->read_data_index * sizeof(MonitorData), SEEK_SET);
+       // if (sd_card->sd_card_data == NULL)
+       // {
+       //   DEBUG_ERROR("%s","sd_card_data is null\n");
+       //   sd_card->sd_card_state = SD_CARD_ERROR;
+       //   break;
+       // }
+       // size_t n = fread(sd_card->sd_card_data, sizeof(MonitorData), sd_card->read_data_count, file);
+       // fclose(file);
+       // sd_card->read_data_count = n/sizeof(MonitorData);
+       // if (sd_card->read_data_count <= 0)
+       // {
+       //   DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
+       //   sd_card->sd_card_state = SD_CARD_ERROR;
+       //   break;
+       // }
+       // sd_card->sd_card_state = SD_CARD_SUCCESS;
         break;
       }
     case SD_CARD_READ_DATA_SIZE:
       {
-        FILE *file = fopen(test_path_bin, "r");
-        if (file == NULL)
-        {
-          DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
-        
-        fseek(file, 0, SEEK_END);
-        long n = ftell(file);
-        fclose(file);
-        sd_card->read_data_count = n/sizeof(MonitorData);
-        if (sd_card->read_data_count == 0)
-        {
-          DEBUG_ERROR("incorrect number of bytes read: %ld\n", n);
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
-        sd_card->sd_card_state = SD_CARD_SUCCESS;
+       // FILE *file = fopen(test_path_bin, "r");
+       // if (file == NULL)
+       // {
+       //   DEBUG_ERROR("%s","Failed to open file test.bin for reading\n");
+       //   sd_card->sd_card_state = SD_CARD_ERROR;
+       //   break;
+       // }
+       // 
+       // fseek(file, 0, SEEK_END);
+       // long n = ftell(file);
+       // fclose(file);
+       // sd_card->read_data_count = n/sizeof(MonitorData);
+       // if (sd_card->read_data_count == 0)
+       // {
+       //   DEBUG_ERROR("incorrect number of bytes read: %ld\n", n);
+       //   sd_card->sd_card_state = SD_CARD_ERROR;
+       //   break;
+       // }
+       // sd_card->sd_card_state = SD_CARD_SUCCESS;
         break;
       }
     case SD_CARD_WRITE_MACHINE_PROFILE:
@@ -198,14 +199,8 @@ static void read_sd()
         }
         DEBUG_INFO("%s","Writing Machine Profile to SD Card\n");
         int n = fwrite(&sd_card->sd_card_profile, sizeof(MachineProfile), 1, file_config_write);
-        if (n != 1)
-        {
-          DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
         fclose(file_config_write);
-        if (n != sizeof(MachineProfile))
+        if (n != 1)
         {
           DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
           sd_card->sd_card_state = SD_CARD_ERROR;
@@ -213,6 +208,7 @@ static void read_sd()
         }
         sd_card->sd_card_state = SD_CARD_SUCCESS;
         loaded_mp = false;
+        DEBUG_INFO("%s","Machine Profile written to SD Card\n");
         break;
       }
     case SD_CARD_FILE_EXISTS:
@@ -362,7 +358,6 @@ static void monitor_cog(int samplerate)
   DEBUG_INFO("%s","Starting Monitor Cog\n");
 
   FILE *testFileCsv = NULL;
-  FILE *testFileBin = NULL;
 
   monitorLogData = false;
 
@@ -371,7 +366,6 @@ static void monitor_cog(int samplerate)
   
   // Set up encoder
   encoder_start(&encoder, SERVO_ENCODER_A, SERVO_ENCODER_B, -1, false, 0, -100000, 100000);
-  long lastTime = _getms();
   int force_count = 0;
   int force_raw = 0;
   int gauge_length = 0;
@@ -437,14 +431,14 @@ static void monitor_cog(int samplerate)
         // Begin Logging data
         mount(MOUNT_PATH, _vfs_open_sdcard());
         testFileCsv = fopen(test_path, "w");
-        testFileBin = fopen(test_path_bin, "w");
-        if (testFileCsv == NULL || testFileBin == NULL)
+        if (testFileCsv == NULL)
         {
           DEBUG_ERROR("Failed to open file %s for writing\n", test_path);
           umount(MOUNT_PATH);
           _waitms(100);
           mount(MOUNT_PATH, _vfs_open_sdcard());
         }
+        DEBUG_INFO("Opening file %s for writing\n", test_path);
         fprintf(testFileCsv, "%s\n", header);
         fprintf(testFileCsv, "Time,Force,Distance,Setpoint\n");
         if (state_machine_set(PARAM_MOTION_MODE, MODE_TEST_RUNNING))
@@ -479,17 +473,14 @@ static void monitor_cog(int samplerate)
           }
         }
         monitor_data_local.timeus = _getus() - test_start_time;
-        fwrite(&monitor_data_local, sizeof(MonitorData), 1, testFileBin);
         fprintf(testFileCsv, "%d,%d,%d,%d\n", monitor_data_local.timeus, monitor_data_local.forcemN, monitor_data_local.encoderum, monitor_data_local.setpoint);
       }
     }
     else if (testFileCsv != NULL)
     {
       fclose(testFileCsv);
-      fclose (testFileBin);
       umount(MOUNT_PATH);
       testFileCsv = NULL;
-      testFileBin = NULL;
     }
     else
     {
@@ -514,7 +505,6 @@ static void monitor_cog(int samplerate)
       DEBUG_WARNING("Monitor Cog taking too long: %ld\n", _getms()-start);
     }
 
-    long write_sd_us = _getus();
     if (update && testFileCsv != NULL)
     {
       //DEBUG_INFO("ForceUS: %lu, UpdateUS: %lu, WriteSDUS: %lu, Total: %lu\n", forceus-start, update_us-forceus, write_sd_us-update_us, write_sd_us-start);
@@ -530,7 +520,7 @@ static bool sd_card_file_exists(const char *filename)
   }
   
   MonitorSDCard *sd_card;
-  if (!lock_sd_card_ms(&sd_card,100))
+  if (!lock_sd_card_ms(&sd_card,100U))
   {
     DEBUG_WARNING("Failed to lock monitor checking file exists: %s\n", filename);
     return false;
@@ -574,7 +564,7 @@ bool read_sd_profile(MachineProfile * profile)
   }
   
   MonitorSDCard *sd_card;
-  if (!lock_sd_card_ms(&sd_card,10))
+  if (!lock_sd_card_ms(&sd_card,10U))
   {
     DEBUG_WARNING("%s","Failed to lock monitor reading machine profile\n");
     return false;
@@ -601,7 +591,7 @@ bool read_sd_profile(MachineProfile * profile)
     }
   }
 
-  if (!lock_sd_card_ms(&sd_card,10))
+  if (!lock_sd_card_ms(&sd_card,10U))
   {
     DEBUG_WARNING("%s","Failed to lock monitor reading machine profile\n");
     return false;
@@ -628,9 +618,9 @@ bool write_sd_profile(MachineProfile * profile)
   }
 
   MonitorSDCard *sd_card;
-  if (!lock_sd_card(&sd_card))
+  if (!lock_sd_card_ms(&sd_card, 100U))
   {
-    DEBUG_WARNING("Failed to lock monitor for writing machine profile: running=%d\n", sd_card->sd_card_state);
+    DEBUG_WARNING("%s","Failed to lock sd card for writing machine profile\n");
     return false;
   }
 
@@ -664,7 +654,7 @@ int read_sd_card_data(MonitorData *data, int index, int count)
   }
 
   MonitorSDCard *sd_card = NULL;
-  if (!lock_sd_card_ms(&sd_card,1000))
+  if (!lock_sd_card_ms(&sd_card,1000U))
   {
     DEBUG_WARNING("Failed to lock monitor for reading data: running=%d\n", sd_card->sd_card_state);
     return false;
@@ -686,13 +676,12 @@ int read_sd_card_data(MonitorData *data, int index, int count)
     }
   }
 
-  if (!lock_sd_card_ms(&sd_card,10))
+  if (!lock_sd_card_ms(&sd_card,10U))
   {
     DEBUG_WARNING("%s","Failed to lock monitor for reading data\n");
     return false;
   }
 
-  bool result = *state == SD_CARD_SUCCESS;
   int data_count = sd_card->read_data_count;
 
   memcpy(data, sd_card->sd_card_data, sizeof(MonitorData)*sd_card->read_data_count);
@@ -710,7 +699,7 @@ int read_data_size()
   }
   
   MonitorSDCard *sd_card;
-  if (!lock_sd_card_ms(&sd_card,1000))
+  if (!lock_sd_card_ms(&sd_card,1000U))
   {
     DEBUG_WARNING("%s","Failed to lock monitor for reading data size\n");
     return false;
@@ -730,7 +719,7 @@ int read_data_size()
     }
   }
 
-  if (!lock_sd_card_ms(&sd_card,10))
+  if (!lock_sd_card_ms(&sd_card,10U))
   {
     DEBUG_WARNING("%s","Failed to lock monitor for reading data size\n");
     return false;

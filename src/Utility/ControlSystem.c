@@ -238,8 +238,8 @@ static void control_cog(void *arg)
                     int max_counter = navkey_read_max(&navkey);
                     if (max_counter != NAVKEY_MAX_COUNT)
                     {
-                        DEBUG_ERROR("Navkey is not responding!!! %d!=%d\n", max_counter, NAVKEY_MAX_COUNT);
-                        init_navkey();
+                        //DEBUG_ERROR("Navkey is not responding!!! %d!=%d\n", max_counter, NAVKEY_MAX_COUNT);
+                        //init_navkey();
                     }
                     else
                     {

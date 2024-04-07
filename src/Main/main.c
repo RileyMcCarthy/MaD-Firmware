@@ -13,7 +13,7 @@ enum
 #ifdef __EMULATION__
 int main() {
     setbuf(stdout, NULL);
-    initMicroseconds();
+    init_simulator();
     mad_begin();
     return 0;
 }

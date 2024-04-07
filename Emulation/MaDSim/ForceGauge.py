@@ -2,6 +2,7 @@ from . import logger
 import asyncio
 from .Async import AsyncHandler
 from . import sim_loop
+import struct
 
 class SimulatedADS122U04(AsyncHandler):
     STATUS_SUCCESS = "SUCCESS"
@@ -20,6 +21,7 @@ class SimulatedADS122U04(AsyncHandler):
         self.data = []
         sim_loop.create_task(self.send_data_loop())
         self.continuous_data = False
+        self.force = 200
 
     def clear_data(self):
         self.data.clear()
@@ -35,7 +37,11 @@ class SimulatedADS122U04(AsyncHandler):
     async def send_data_loop(self):
         while True:
             if self.continuous_data:
-                self.tx(bytes([0x55, 0x00, 0x10, 0x01]))
+                value = self.ads_value.to_bytes(length=4, byteorder='little', signed=False)
+                value3bytes = value[0:3]
+                #logger.info(f"Sending data: {value3bytes[0]} {value3bytes[1]} {value3bytes[2]}")
+                self.tx(value3bytes)
+                #self.tx(bytes([0x55, 0x00, 0x10, 0x01]))
             await asyncio.sleep(0.01)
 
     def process_serial_data(self, byte: bytes):
@@ -88,3 +94,13 @@ class SimulatedADS122U04(AsyncHandler):
     def rx(self, data: bytes) -> bytes:
         for byte in data:
             self.process_serial_data(byte)
+    
+    def set_force(self, force):
+        self.force = force
+
+    def get_force(self):
+        return self.force
+    
+    @property
+    def ads_value(self):
+        return (int)(self.force * -658) + 16119601

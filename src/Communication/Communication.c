@@ -249,9 +249,9 @@ static void command_respond(uint8_t cmd)
             DEBUG_ERROR("%s","Failed to convert machine state to json\n");
             return;
         }
+        DEBUG_INFO("Sending: %s\n", buf);
         send(CMD_STATE, buf, strlen(buf));
         unlock_json_buffer();
-        _waitms(10);
         break;
     }
     case CMD_MPROFILE:
@@ -321,7 +321,7 @@ static void command_respond(uint8_t cmd)
 void command_recieve(uint8_t cmd)
 {
     DEBUG_INFO("%s","Recieving Data from command\n");
-    if (!receive(cmd, recieved_json, MAX_BUFFER_SIZE))
+    if (receive(cmd, recieved_json, MAX_BUFFER_SIZE) == 0)
     {
         DEBUG_WARNING("%s","failed to receive command data\n");
         return;
@@ -354,13 +354,13 @@ void command_recieve(uint8_t cmd)
             break;
         }
         DEBUG_NOTIFY("%s","Machine profile saved to SD Card\n");
-        _reboot();
+#ifndef __EMULATION__
+        _reboot(); //-- need to reenable, how can I simulate reboot...
+#endif
         break;
     }
     case CMD_MOTIONMODE:
     {
-        //@TODO remove motion status hardcode
-        state_machine_set(PARAM_MOTION_STATUS, MOTIONSTATUS_ENABLED);
         DEBUG_INFO("%s","Getting motion mode\n");
 
         MotionMode mode;
@@ -473,7 +473,7 @@ void command_recieve(uint8_t cmd)
             send_awk(CMD_TEST_HEADER, "FAIL");
         }
 
-        char *name;
+        const char *name;
         if (!json_to_test_header_name(&name, recieved_json))
         {
             DEBUG_ERROR("%s","Failed to get name for test header\n");

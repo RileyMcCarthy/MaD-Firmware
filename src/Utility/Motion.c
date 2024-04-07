@@ -27,7 +27,6 @@ static long motion_stack[MOTION_MEMORY_SIZE];
 static bool motion_enabled = false;
 static int motion_setpoint_steps = 0;
 static int motion_position_steps = 0;
-static long motion_feedrate_steps_per_second = 0;
 
 #define MAX_SIZE_MANUAL 10
 #define MAX_SIZE_TEST 200
@@ -144,7 +143,7 @@ static void motion_cog(void *arg)
     MotionMode * motion_mode = &(machine_state_ptr->motionParameters.mode);
     while(true)
     {
-        
+        //DEBUG_INFO("%s", "Motion cog running\n");
         Move command;
         StaticQueue *queue = &manual_queue;
         bool test_running = *motion_mode == MODE_TEST_RUNNING;
