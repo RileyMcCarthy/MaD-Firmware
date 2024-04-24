@@ -37,6 +37,13 @@ typedef struct Notification {
     char message[MAX_SIZE_NOTIFICATION_MESSAGE];
 } Notification;
 
+typedef struct PeriodicMessage
+{
+    uint32_t period;
+    uint32_t last_sent;
+    uint32_t command;
+} PeriodicMessage;
+
 void notification_init();
 void notification_add_debug(const char * type, const char * format, ...);
 bool start_communication();

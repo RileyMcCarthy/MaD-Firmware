@@ -33,6 +33,30 @@ static StaticQueue notification_queue;
 
 static bool notification_initialized = false;
 
+typedef enum PeriodicMessages
+{
+    PERIODIC_MESSAGE_DATA,
+    PERIODIC_MESSAGE_STATE,
+    PERIOD_MESSAGE_COUNT,
+} PeriodicMessages;
+
+// Flexprop doesnt support designated initializers, need to use this method :(
+// Tedious cause we need to keep the order of the struct the same as the enum
+static PeriodicMessage periodic_messages[PERIOD_MESSAGE_COUNT] = {
+    {
+        // PERIODIC_MESSAGE_DATA
+        100,      // period
+        0,        // last sent
+        CMD_DATA, // command
+    },
+    {
+        // PERIODIC_MESSAGE_STATE
+        1000,      // period
+        0,         // last sent
+        CMD_STATE, // command
+    },
+};
+
 void notification_init()
 {
     if (queue_init(&notification_queue, notification_buffer, MAX_SIZE_NOTIFICATION_BUFFER, sizeof(Notification)))
@@ -503,7 +527,7 @@ static void beginCommunication(void *arg)
         // Let watchdog know we are running ok
         set_communication_status(_getms());
 
-        // Recieve any incommand commands
+        // Process any incommand commands over serial
         uint8_t cmd = 0;
         const bool command_recieved = communication_private_recieve_command(&cmd);
         if (command_recieved)
@@ -530,6 +554,17 @@ static void beginCommunication(void *arg)
             }
             send(CMD_NOTIICATION, notification_json, strlen(notification_json));
             unlock_json_buffer();
+        }
+
+        // Send periodic data
+
+        for (PeriodicMessages message = 0; message < PERIOD_MESSAGE_COUNT; message++)
+        {
+            if (_getms() - periodic_messages[message].last_sent > periodic_messages[message].period)
+            {
+                command_respond(periodic_messages[message].command);
+                periodic_messages[message].last_sent = _getms();
+            }
         }
     }
 }
