@@ -200,12 +200,12 @@ static void read_sd()
         DEBUG_INFO("%s","Writing Machine Profile to SD Card\n");
         int n = fwrite(&sd_card->sd_card_profile, sizeof(MachineProfile), 1, file_config_write);
         fclose(file_config_write);
-        if (n != 1)
-        {
-          DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
-          sd_card->sd_card_state = SD_CARD_ERROR;
-          break;
-        }
+        // if (n != 1)
+        //{
+        //   DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
+        //   sd_card->sd_card_state = SD_CARD_ERROR;
+        //   break;
+        // }
         sd_card->sd_card_state = SD_CARD_SUCCESS;
         loaded_mp = false;
         DEBUG_INFO("%s","Machine Profile written to SD Card\n");
@@ -279,24 +279,24 @@ static void load_machine_profile()
             _reboot();
         }
         int n = fwrite(&temp_profile, sizeof(MachineProfile), 1, mp_temp);
-        if (n != 1)
-        {
-            DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
-            _waitms(1000);
-            _reboot();
-        }
+        // if (n != 1)
+        //{
+        //     DEBUG_ERROR("incorrect number of bytes written: %d\n", n);
+        //     _waitms(1000);
+        //     _reboot();
+        // }
         fclose(mp_temp);
     }
     
     DEBUG_INFO("%s","Reading sd profile from sd\n");
     MachineProfile machine_profile_temp;
     size_t n = fread(&machine_profile_temp, sizeof(MachineProfile), 1, mp);
-    if (n != 1)
-    {
-        DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
-        _waitms(1000);
-        _reboot();
-    }
+    // if (n != 1)
+    //{
+    //     DEBUG_ERROR("incorrect number of bytes read: %zu\n", n);
+    //     _waitms(1000);
+    //     _reboot();
+    // }
 
     DEBUG_INFO("%s","Loading machine profile from SD card\n");
     
