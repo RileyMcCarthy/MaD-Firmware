@@ -1,13 +1,15 @@
+#include <string.h>
 #include "Utility/ControlSystem.h"
 #include "Utility/Monitor.h"
 #include "Utility/Debug.h"
 #include "MotionPlanning.h"
-#include "ForceGauge.h"
-#include <propeller.h>
+#include "ForceGauge/ForceGauge.h"
+#include <propeller2.h>
 #include "i2cNavKey.h"
 #include "Memory/MachineProfile.h"
 #include "Main/MaD.h"
 #include "Utility/Motion.h"
+#include "Memory/CogStatus.h"
 #define CONTROL_MEMORY_SIZE 5000
 
 #define CONTROL_DEGUB 0
@@ -31,15 +33,6 @@ typedef enum MoveModes
 
 static NavKey navkey;
 
-typedef enum homingstate_e
-{
-    HOMING_NONE,
-    HOMING_COMPLETE,
-    HOMING_SEEKING,
-    HOMING_BACKING_OFF,
-    HOMING_SEEKING_SLOW
-} HomingState;
-
 typedef enum movetype_e
 {
     MOVE_RELATIVE,
@@ -57,15 +50,13 @@ static void init_navkey()
     navkey_write_max(&navkey, NAVKEY_MAX_COUNT);             /* Set the maximum threshold*/
     navkey_write_min(&navkey, -NAVKEY_MAX_COUNT);            /* Set the minimum threshold */
     navkey_write_step(&navkey, 1);                 /* Set the step to 1*/
-    navkey_write_double_push_period(&navkey, 300); /*Set a period for the double push of 300ms */
+    navkey_write_double_push_period(&navkey, 100); /*Set a period for the double push of 300ms */
     navkey_write_counter(&navkey, 0);              // reset counter to position
 }
 
 /*responsible for sending moves from using navkey, updating state machine, checking for faults*/
 static void control_cog(void *arg)
 {
-    arg;
-
     /* Initialize IO */
     _pinr(ESD_UPPER_PIN);
     _pinr(ESD_LOWER_PIN);
@@ -247,8 +238,8 @@ static void control_cog(void *arg)
                     int max_counter = navkey_read_max(&navkey);
                     if (max_counter != NAVKEY_MAX_COUNT)
                     {
-                        DEBUG_ERROR("Navkey is not responding!!! %d!=%d\n", max_counter, NAVKEY_MAX_COUNT);
-                        init_navkey();
+                        //DEBUG_ERROR("Navkey is not responding!!! %d!=%d\n", max_counter, NAVKEY_MAX_COUNT);
+                        //init_navkey();
                     }
                     else
                     {
@@ -395,6 +386,11 @@ static void control_cog(void *arg)
                             break;
                         case FUNC_MANUAL_MOVE_GAUGE_LENGTH:
                             //move_servo(control, MOVE_STOP, 0);
+                            break;
+                        case FUNC_SET_GAUGE_LENGTH:
+                            //move_servo(control, MOVE_STOP, 0);
+                            break;
+                        default:
                             break;
                         }
                     }

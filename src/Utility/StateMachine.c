@@ -1,5 +1,7 @@
 #include "Utility/StateMachine.h"
 #include "Utility/Debug.h"
+#include <propeller2.h>
+#include <string.h>
 static MachineState machine_state;
 static int machine_state_lock;
 
@@ -202,6 +204,9 @@ bool state_machine_set(Parameter param, int state)
             }
         }
         break;
+    case PARAM_FUNCTION:
+    default:
+        break;
     }
 
     machine_state.state = state_machine_motion();
@@ -289,7 +294,7 @@ char * motion_status_to_string(MotionStatus motionStatus)
     }
 }
 
-MotionStatus string_to_motion_status(char *motionStatus)
+MotionStatus string_to_motion_status(const char *motionStatus)
 {
     if (strcmp(motionStatus, MOTION_STATUS_DISABLED_STRING) == 0)
     {
@@ -342,25 +347,25 @@ char * esd_chain_to_string(ESDChain esdChain)
     }
 }
 
-ESDChain string_to_esd_chain(char *esdChain)
+ESDChain string_to_esd_chain(const char *esdChain)
 {
     if (strcmp(esdChain, ESD_CHAIN_OK_STRING) == 0)
     {
         return ESD_OK;
     }
-    else if (strmp(esdChain, ESD_CHAIN_POWER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_POWER_STRING, strlen(ESD_CHAIN_POWER_STRING)) == 0)
     {
         return ESD_POWER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_LOWER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_LOWER_STRING, strlen(ESD_CHAIN_LOWER_STRING)) == 0)
     {
         return ESD_LOWER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_UPPER_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_UPPER_STRING, strlen(ESD_CHAIN_UPPER_STRING)) == 0)
     {
         return ESD_UPPER;
     }
-    else if (strcmp(esdChain, ESD_CHAIN_SWITCH_STRING) == 0)
+    else if (strncmp(esdChain, ESD_CHAIN_SWITCH_STRING, strlen(ESD_CHAIN_SWITCH_STRING)) == 0)
     {
         return ESD_SWITCH;
     }
@@ -404,7 +409,7 @@ char * motion_condition_to_string(MotionCondition motionCondition)
     }
 }
 
-MotionCondition string_to_motion_condition(char *motionCondition)
+MotionCondition string_to_motion_condition(const char *motionCondition)
 {
     if (strcmp(motionCondition, CONDITION_FORCE_STRING) == 0)
     {
@@ -463,7 +468,7 @@ char * motion_mode_to_string(MotionMode motionMode)
     }
 }
 
-MotionMode string_to_motion_mode(char *motionMode)
+MotionMode string_to_motion_mode(const char *motionMode)
 {
     if (strcmp(motionMode, MODE_MANUAL_STRING) == 0)
     {

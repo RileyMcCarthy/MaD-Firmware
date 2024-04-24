@@ -1,4 +1,5 @@
 #include "JSON.h"
+#include <stdio.h>
 
 // Used for decoding string into tokens
 #define MAX_TOKENS 300
@@ -31,7 +32,7 @@ bool json_property_to_string(const json_t *parser, const char *name, char *value
     return true;
 }
 
-bool json_property_to_string_ref(const json_t *parser, const char *name, char **value)
+bool json_property_to_string_ref(const json_t *parser, const char *name, const char **value)
 {
     const json_t *property = json_getProperty(parser, name);
     if (property == NULL || JSON_TEXT != json_getType(property))

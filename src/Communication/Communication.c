@@ -1,6 +1,8 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
-#include "Main/Communication/Communication.h"
+#include <propeller2.h>
+#include "Communication/Communication.h"
 #include "Utility/StateMachine.h"
 #include "Utility/JsonEncoder.h"
 #include "Utility/JsonDecoder.h"
@@ -10,8 +12,10 @@
 #include "StaticQueue.h"
 #include "Memory/MachineProfile.h"
 #include "Main/MaD.h"
-#include "Main/Communication/CRC.h"
-#include <propeller.h>
+#include "Communication/CRC.h"
+#include "FullDuplexSerial.h"
+#include "Memory/CogStatus.h"
+
 /* Command structure
  * w<7 cmd bits> <N> <N data>... <CRC>
  * ________ ________ ________
@@ -21,14 +25,37 @@
 
 #define COMMUNICATION_MEMORY_SIZE 8000
 static long comm_stack[COMMUNICATION_MEMORY_SIZE];
-typedef struct __using("lib/Protocol/jm_fullduplexserial.spin2") FDS;
 
-static FDS fds;
+static FullDuplexSerial fds;
 
 static Notification notification_buffer[MAX_SIZE_NOTIFICATION_BUFFER];
 static StaticQueue notification_queue;
 
 static bool notification_initialized = false;
+
+typedef enum PeriodicMessages
+{
+    PERIODIC_MESSAGE_DATA,
+    PERIODIC_MESSAGE_STATE,
+    PERIOD_MESSAGE_COUNT,
+} PeriodicMessages;
+
+// Flexprop doesnt support designated initializers, need to use this method :(
+// Tedious cause we need to keep the order of the struct the same as the enum
+static PeriodicMessage periodic_messages[PERIOD_MESSAGE_COUNT] = {
+    {
+        // PERIODIC_MESSAGE_DATA
+        100,      // period
+        0,        // last sent
+        CMD_DATA, // command
+    },
+    {
+        // PERIODIC_MESSAGE_STATE
+        1000,      // period
+        0,         // last sent
+        CMD_STATE, // command
+    },
+};
 
 void notification_init()
 {
@@ -84,47 +111,37 @@ static bool send(int cmd, char *buf, uint16_t size)
 {
     DEBUG_INFO("Sending data of size: %d\n", size);
 
-    fds.tx(0x55);
-    fds.tx(cmd);
-    fds.tx(size);
-    fds.tx(size >> 8);
+    fds_tx(&fds, 0x55);
+    fds_tx(&fds, cmd);
+    fds_tx(&fds, size);
+    fds_tx(&fds, size >> 8);
 
     for (int i = 0; i < size; i++)
     {
-        fds.tx(buf[i]);
+        fds_tx(&fds, buf[i]);
     }
-    unsigned crc = crc8(buf, size);
-    fds.tx(crc);
+    unsigned crc = crc8((uint8_t*)buf, size);
+    fds_tx(&fds, crc);
     return true;
 }
 
-static int recieveCMD()
+static bool communication_private_recieve_command(uint8_t *cmd)
 {
-    while (1)
+    bool command_recieved = false;
+    if (fds_rxcheck(&fds))
     {
-        int res;
-        while ((res = fds.rxtime(10)) != 0x55)
+        int sync = fds_rxtime(&fds, 10);
+        if (sync == 0x55)
         {
-            set_communication_status(_getms());
-            Notification notification;
-            if (queue_pop(&notification_queue, &notification))
+            int res = fds_rxtime(&fds, 10);
+            if (res > 0)
             {
-                char * notification_json = notification_to_json(&notification);
-                if (notification_json == NULL)
-                {
-                    continue;
-                }
-                send(CMD_NOTIICATION, notification_json, strlen(notification_json));
-                unlock_json_buffer();
+                *cmd = (uint8_t)res;
+                command_recieved = true;
             }
         }
-        int cmd = fds.rxtime(10);
-        if (cmd != -1)
-        {
-            //DEBUG_INFO("GOT CMD: %d\n", cmd);
-            return cmd;
-        }
     }
+    return command_recieved;
 }
 static char awk_buf[100]; // Should use json encode buffer
 static void send_awk(uint8_t cmd, const char *awk)
@@ -142,21 +159,24 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read data size
-    uint16_t size = fds.rxtime(10);
-    if (size == -1)
+    int res = fds_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s", "invalid data recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
-
-    size |= fds.rxtime(10) << 8;
-    if (size == -1)
+    uint16_t size = ((uint8_t)res);
+    
+    res = fds_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s","invalid data recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
+
+    size |= ((uint8_t)res) << 8;
 
     DEBUG_INFO("Recieved data of size: %d\n", size);
 
@@ -169,7 +189,7 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     // Read data
     for (unsigned int i = 0; i < size; i++)
     {
-        buf[i] = fds.rxtime(10);
+        buf[i] = fds_rxtime(&fds, 10);
         if (buf[i] == -1)
         {
             DEBUG_WARNING("%s","invalid data recieved\n");
@@ -179,16 +199,18 @@ static uint16_t receive(uint8_t cmd, char *buf, int max_size)
     }
 
     // Read CRC
-    uint8_t crc = fds.rxtime(10);
-    if (crc == -1)
+    res = fds_rxtime(&fds, 10);
+    if (res == -1)
     {
         DEBUG_WARNING("%s","no crc recieved\n");
         send_awk(cmd, "FAIL");
         return 0;
     }
 
+    uint8_t crc = (uint8_t)res;
+
     // Check CRC
-    if (crc != crc8(buf, size))
+    if (crc != crc8((uint8_t *)buf, size))
     {
         DEBUG_WARNING("%s","invalid crc recieved\n");
         send_awk(cmd, "FAIL");
@@ -235,6 +257,7 @@ static void command_respond(uint8_t cmd)
         DEBUG_INFO("Sending Data (%d)\n", monitor_data.log);
         snprintf(response_json, MAX_RESPONSE_SIZE, "{\"Force\":%d,\"Position\":%d,\"Setpoint\":%d,\"Time\":%d,\"Log\":%d, \"Raw\":%d}",
             monitor_data.forcemN, monitor_data.encoderum, monitor_data.setpoint, monitor_data.timeus, monitor_data.log,monitor_data.forceRaw);
+        DEBUG_INFO("Sending: %s\n", response_json);
         send(CMD_DATA, response_json, strlen(response_json)); // dont send null ptr
 
         break;
@@ -250,9 +273,9 @@ static void command_respond(uint8_t cmd)
             DEBUG_ERROR("%s","Failed to convert machine state to json\n");
             return;
         }
+        DEBUG_INFO("Sending: %s\n", buf);
         send(CMD_STATE, buf, strlen(buf));
         unlock_json_buffer();
-        _waitms(10);
         break;
     }
     case CMD_MPROFILE:
@@ -313,7 +336,7 @@ static void command_respond(uint8_t cmd)
     }
     default:
     {
-        DEBUG_WARNING("%s","Write Command not found\n");
+        DEBUG_WARNING("Write Command not found: %d\n", cmd);
         break;
     }
     }
@@ -322,7 +345,7 @@ static void command_respond(uint8_t cmd)
 void command_recieve(uint8_t cmd)
 {
     DEBUG_INFO("%s","Recieving Data from command\n");
-    if (!receive(cmd, recieved_json, MAX_BUFFER_SIZE))
+    if (receive(cmd, recieved_json, MAX_BUFFER_SIZE) == 0)
     {
         DEBUG_WARNING("%s","failed to receive command data\n");
         return;
@@ -355,13 +378,13 @@ void command_recieve(uint8_t cmd)
             break;
         }
         DEBUG_NOTIFY("%s","Machine profile saved to SD Card\n");
-        _reboot();
+#ifndef __EMULATION__
+        _reboot(); //-- need to reenable, how can I simulate reboot...
+#endif
         break;
     }
     case CMD_MOTIONMODE:
     {
-        //@TODO remove motion status hardcode
-        state_machine_set(PARAM_MOTION_STATUS, MOTIONSTATUS_ENABLED);
         DEBUG_INFO("%s","Getting motion mode\n");
 
         MotionMode mode;
@@ -426,7 +449,7 @@ void command_recieve(uint8_t cmd)
         {
             if (motion_add_move(&move))
             {
-                DEBUG_INFO("Adding move G:%d X%d F%d\n", move.g, move.x, move.f);
+                DEBUG_INFO("Adding move G:%d X%f F%f\n", move.g, move.x, move.f);
             }
             else
             {
@@ -474,7 +497,7 @@ void command_recieve(uint8_t cmd)
             send_awk(CMD_TEST_HEADER, "FAIL");
         }
 
-        char *name;
+        const char *name;
         if (!json_to_test_header_name(&name, recieved_json))
         {
             DEBUG_ERROR("%s","Failed to get name for test header\n");
@@ -498,19 +521,50 @@ static void beginCommunication(void *arg)
 {
     _waitms(500); // wait for monitor to start, should be replaced by cog status!
     // Begin main loop
-    fds.start(RPI_RX, RPI_TX, 0, 115200);
+    fds_start(&fds, RPI_RX, RPI_TX, 0, 115200);
     while (1)
     {
-        DEBUG_INFO("%s","Waiting for command\n");
-        int cmd = recieveCMD();
-        DEBUG_INFO("cmd:%d,write:%d\n", (cmd & ~CMD_WRITE), ((cmd & CMD_WRITE) == CMD_WRITE));
-        if ((cmd & CMD_WRITE) != CMD_WRITE)
+        // Let watchdog know we are running ok
+        set_communication_status(_getms());
+
+        // Process any incommand commands over serial
+        uint8_t cmd = 0;
+        const bool command_recieved = communication_private_recieve_command(&cmd);
+        if (command_recieved)
         {
-            command_respond(cmd);
+            DEBUG_INFO("cmd:%d,write:%d\n", (cmd & ~CMD_WRITE), ((cmd & CMD_WRITE) == CMD_WRITE));
+            if ((cmd & CMD_WRITE) != CMD_WRITE)
+            {
+                command_respond(cmd);
+            }
+            else
+            {
+                command_recieve(cmd & ~CMD_WRITE);
+            }
         }
-        else
+
+        // Send any notifications
+        Notification notification;
+        if (queue_pop(&notification_queue, &notification))
         {
-            command_recieve(cmd & ~CMD_WRITE);
+            char * notification_json = notification_to_json(&notification);
+            if (notification_json == NULL)
+            {
+                continue;
+            }
+            send(CMD_NOTIICATION, notification_json, strlen(notification_json));
+            unlock_json_buffer();
+        }
+
+        // Send periodic data
+
+        for (PeriodicMessages message = 0; message < PERIOD_MESSAGE_COUNT; message++)
+        {
+            if (_getms() - periodic_messages[message].last_sent > periodic_messages[message].period)
+            {
+                command_respond(periodic_messages[message].command);
+                periodic_messages[message].last_sent = _getms();
+            }
         }
     }
 }

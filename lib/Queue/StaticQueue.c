@@ -1,4 +1,6 @@
 #include "StaticQueue.h"
+#include <propeller2.h>
+#include <string.h>
 
 bool queue_init(StaticQueue *queue, void *buf, int max_size, int item_size) {
     queue->buf = buf;

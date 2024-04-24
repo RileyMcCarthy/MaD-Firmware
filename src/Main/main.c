@@ -1,11 +1,23 @@
 #include "Main/MaD.h"
-#include <sys/vfs.h>
-#include "Encoder.h"
+#include <stdint.h>
+#include <propeller2.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
 enum
 {
     HEAPSIZE = 32400 * 4
 };
 
+#ifdef __EMULATION__
+int main() {
+    setbuf(stdout, NULL);
+    init_simulator();
+    mad_begin();
+    return 0;
+}
+#else
 /**
  * @brief Main method that is called on program startup.
  * Begins MaD Board instance
@@ -20,3 +32,4 @@ int main()
         ;
     return 0;
 }
+#endif

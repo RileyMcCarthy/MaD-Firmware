@@ -1,3 +1,5 @@
+#ifndef __STATIC_QUEUE_H__
+#define __STATIC_QUEUE_H__
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -16,3 +18,6 @@ bool queue_push(StaticQueue *queue, void *data);
 bool queue_pop(StaticQueue *queue, void *data);
 void queue_empty(StaticQueue *queue);
 bool queue_isempty(StaticQueue *queue);
+bool queue_isfull(StaticQueue *queue);
+
+#endif // __STATIC_QUEUE_H__

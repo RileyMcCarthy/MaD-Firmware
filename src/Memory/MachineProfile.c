@@ -1,6 +1,7 @@
 #include "Memory/MachineProfile.h"
 #include "Utility/Debug.h"
 #include <stddef.h>
+#include <propeller2.h>
 
 static MachineProfile machine_profile;
 static int _machine_profile_lock = -1;
@@ -57,7 +58,7 @@ bool lock_machine_profile_ms(MachineProfile ** profile, int ms)
     {
         if (_getms() - start > ms)
         {
-            DEBUG_ERROR("%s","Failed to lock machine profile, waited %dms\n", ms);
+            DEBUG_ERROR("Failed to lock machine profile, waited %dms\n", _getms() - start);
             return false;
         }
     }

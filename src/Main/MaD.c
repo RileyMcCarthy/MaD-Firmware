@@ -1,50 +1,13 @@
 #include <stdint.h>
+#include <propeller2.h>
 #include "Main/MaD.h"
 #include "JSON.h"
+#include "Utility/Motion.h"
 #include "Utility/ControlSystem.h"
 #include "Utility/Debug.h"
+#include "Communication/Communication.h"
 
 int _stdio_debug_lock;
-
-/**
- * @brief Starts the display, motion control, and all MaD board related tasks. Should never exit
- *
- */
-
-void test_sd_card()
-{
-  mount("/sd", _vfs_open_sdcard());
-  _pinl(56);
-  int lastblink = 0;
-  for (int j=0;j<100;j++)
-  {
-    FILE *fp = fopen("/sd/test.txt", "w");
-    if (fp == NULL)
-    {
-      printf("Failed to open file for writing\n");
-      return;
-    }
-    printf("Writing to file\n");
-    for (int i=0;i<10000;i++)
-    {
-      int len = fprintf(fp, "Hello World %d\n", i);
-      if (len < 0)
-      {
-        printf("Failed to write to file: %d\n",i);
-        return;
-      }
-      printf("Wrote to file %d\n", i);
-      _waitms(1);
-      if ((_getms() - lastblink) > 1000)
-      {
-        _pinnot(56);
-        lastblink = _getms();
-      }
-    }
-    fclose(fp);
-    printf("Finished writing to file\n");
-  }
-}
 
 #include "i2cNavKey.h"
 static NavKey navkey1;
@@ -56,7 +19,7 @@ void test_navkey()
     navkey_write_max(&navkey1, 100000);             /* Set the maximum threshold*/
     navkey_write_min(&navkey1, -100000);            /* Set the minimum threshold */
     navkey_write_step(&navkey1, 1);                 /* Set the step to 1*/
-    navkey_write_double_push_period(&navkey1, 300); /*Set a period for the double push of 300ms */
+    navkey_write_double_push_period(&navkey1, 100); /*Set a period for the double push of 300ms */
     navkey_write_counter(&navkey1, 0);              // reset counter to position
     printf("Navkey test started\n");
     navkey1.status.UPR = 0;

@@ -1,6 +1,7 @@
 #include "Utility/JsonEncoder.h"
 #include "JSON.h"
 #include "Utility/Debug.h"
+#include <propeller2.h>
 
 /** Private Structure to JSON **/
 static int _json_encode_lock = -1;
@@ -298,7 +299,7 @@ char *test_data_to_json(MonitorData *data, int count, int index)
 
 bool unlock_json_buffer()
 {
-    _lockrel(_json_encode_lock);
+   return _lockrel(_json_encode_lock) != 0;
 }
 
 bool lock_json_buffer()
