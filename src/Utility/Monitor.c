@@ -375,7 +375,7 @@ static void monitor_cog(int samplerate)
   while (1)
   {
     set_monitor_status(_getms());
-    long start = _getus();
+    uint32_t start = _getms();
     bool update = false;
 
     if (get_force(force_count))
@@ -500,9 +500,10 @@ static void monitor_cog(int samplerate)
     }
 
     //printf("WriteSDTime: %lu\n", _getus()-start);
-    if (_getms() - start > 1000)
+    uint32_t monitor_runtime_period = _getms() - start;
+    if (monitor_runtime_period > 1000)
     {
-      DEBUG_WARNING("Monitor Cog taking too long: %ld\n", _getms()-start);
+      DEBUG_WARNING("Monitor Cog taking too long: %ld\n", monitor_runtime_period);
     }
 
     if (update && testFileCsv != NULL)
