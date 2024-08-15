@@ -1,5 +1,6 @@
 #include "JSON.h"
 #include <stdio.h>
+#include "Debug.h"
 
 // Used for decoding string into tokens
 #define MAX_TOKENS 300
@@ -76,7 +77,7 @@ bool json_property_to_double(const json_t *json, const char *name, double *value
     const json_t *property = json_getProperty(json, name);
     if (!property || JSON_REAL != json_getType(property))
     {
-        ////DEBUG_ERROR("Error, the %s property is not found.", name);
+        DEBUG_ERROR("Error, the %s property is not found.", name);
         return false;
     }
     double temp = json_getReal(property);
@@ -102,7 +103,7 @@ const json_t * json_create_static(char *json)
     const json_t *parser = json_create(json, mem, MAX_TOKENS);
     if (parser == NULL)
     {
-        ////DEBUG_ERROR("Error, failed to create json parser\n");
+        DEBUG_ERROR("%s", "Error, failed to create json parser\n");
         return NULL;
     }
     return parser;

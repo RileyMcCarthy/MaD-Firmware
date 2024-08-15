@@ -1,5 +1,6 @@
 .pio
 .vscode
+.DS_store
 
 emulation/sd
 emulation/__pycache__

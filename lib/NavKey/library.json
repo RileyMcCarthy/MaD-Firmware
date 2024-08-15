@@ -1,0 +1,16 @@
+{
+  "build": {
+    "libCompatMode": "strict"
+  },
+    "dependencies": [
+      {
+        "name": "tiny-json"
+      },
+      {
+        "name": "FlexProp"
+      },
+      {
+        "name": "HAL"
+      }
+    ]
+}

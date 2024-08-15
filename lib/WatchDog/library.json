@@ -1,0 +1,17 @@
+{
+  "build": {
+    "libCompatMode": "strict"
+  },
+  "name": "Watchdog",
+  "version": "1.0.0",
+  "keywords": "watchdog",
+  "description": "watchdog for the propeller 2",
+  "dependencies": [
+    {
+      "name": "Debug"
+    },
+    {
+      "name": "HAL"
+    }
+  ]
+}

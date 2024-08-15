@@ -76,6 +76,7 @@ force_gauge_pin = 0
 forceGauge = MaDSim.SimulatedADS122U04()
 MaDSim.AsyncConnector(forceGauge, async_server[0])
 
+# socat -d -d pty,raw,echo=0,link=/tmp/tty.rpi_client pty,raw,echo=0,link=/tmp/tty.rpi
 rpi_pin = 53
 #rpi_serial = MaDSim.VirtualSerialPort("rpi_client", "rpi") #run it manually, its easier lol
 rpi_async_serial_server = MaDSim.AsyncSerialServer("rpi_client")
