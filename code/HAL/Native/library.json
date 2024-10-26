@@ -1,0 +1,18 @@
+{
+    "name": "HAL",
+    "version": "1.0.0",
+    "keywords": "cog, thread",
+    "description": "Cog thread manager for the propeller 2",
+    "platforms": ["native"],
+    "dependencies": [
+        {
+            "name": "HALCommon"
+        },
+        {
+          "name": "IO"
+        },
+        {
+          "name": "HW"
+        }
+      ]
+}

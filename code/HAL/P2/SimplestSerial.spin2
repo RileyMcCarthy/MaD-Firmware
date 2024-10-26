@@ -1,0 +1,152 @@
+' Simpleast Serial Version 1b.
+' Rigged to "Begin()" with 2 MHz baud for use with PropTool Debug and/or FlexProp and/or Spin Tools IDE
+
+' Note:  If you do use a Spin2 debug statement in PropTool, you must call Begin() again before using this serial
+'    or it will give jumbled output.
+'   (This is because PropTool's debug resets the serial port when used)
+
+' Some basic debug functions, like dUDEC(), that also restart this serial are provided here.
+
+' Based on SmartSerial.spin2 that is part of FlexProp
+' simple smart pin serial object for P2 eval board
+' implements a subset of FullDuplexSerial functionality
+' Does not use a cog
+' RJA added a few things and changing definition of start to be easier to use
+' Written by Eric R. Smith
+' Copyright 2020 Total Spectrum Software Inc.
+' Distributed under the MIT License (See LICENSE.md)
+'
+'25Dec23:  Adding short delay to Begin() in case used right after starting a new cog
+'11Jun23:  Second Version has fixed RX and TX pins to make it easier to use in subobjects
+'
+CON
+  _txmode       = P_OE | P_ASYNC_TX  'async tx mode, output enabled for smart output  %0000_0000_000_0000000000000_01_11110_0
+  _rxmode       = P_ASYNC_RX         'async rx mode, input  enabled for smart input   %0000_0000_000_0000000000000_00_11111_0
+
+DAT  'pins fixed to the usual
+  rx_pin long 63
+  tx_pin long 62
+  baud   long 2_000_000
+
+
+PUB Begin() 'Start at 2MHz baud
+
+  Waitms(1) 'Adding a short delay here in case this is used right after starting a new cog
+  Start(2_000_000)
+
+PUB Start(baudrate) | bitperiod, bit_mode  'start using user defined pins
+  'Note:  The "mode" parameter, used by fullduplexserial, has been removed
+
+  ' calculate delay between bits
+  bitperiod := (CLKFREQ / baudrate)
+
+
+  ' calculate smartpin mode for 8 bits per character
+  bit_mode := 7 + (bitperiod << 16)
+
+  ' set up the transmit pin
+  pinf(tx_pin)
+  wrpin(tx_pin, _txmode)
+  wxpin(tx_pin, bit_mode)
+  pinl(tx_pin)   ' turn smartpin on by making the pin an output
+
+  ' set up the receive pin
+  pinf(rx_pin)
+  wrpin(rx_pin, _rxmode)
+  wxpin(rx_pin, bit_mode)
+  pinl(rx_pin)  ' turn smartpin on
+
+  baud:=baudrate
+
+
+PUB dUDEC(x)  'Debug an unsigned decimal number
+  debug(udec(x))
+  start(baud)
+
+PUB dUHEX(x,n)  'Debug an unsigned hexidecimal number
+  debug(uhex(x,n))
+  start(baud)
+
+PUB tx(val)    ' send one byte
+  wypin(tx_pin, val)
+  txflush() 'rja
+
+PUB crlf() 'send CR and LF
+  tx(13) 'CR
+  tx(10) 'LF
+
+
+PUB  println(p) 'print a string and then do CRLF
+  str(p)
+  crlf()
+
+
+PUB txflush() | z     ' wait for character sent
+  repeat
+    z := pinr(tx_pin)
+  while z == 0
+
+
+
+PUB rxcheck() : rxbyte | rxpin, z    ' check if byte received (never waits)    ' returns -1 if no byte, otherwise byte
+  rxbyte := -1
+  rxpin := rx_pin
+  z := pinr(rxpin)
+  if z
+    rxbyte := rdpin(rxpin)>>24
+
+
+PUB rxFlush()|i  'RJA added this for compatibility with jm_fullduplexserial, but might not make any sense...
+  repeat
+    i:=rxcheck()
+  until i==-1
+
+
+
+PUB rx() : v       ' receive a byte (waits until one ready)
+  repeat
+    v := rxcheck() 'rja
+  while v == -1
+
+
+PUB str(s) | c       ' transmit a string
+  REPEAT WHILE ((c := byte[s++]) <> 0)
+    tx(c)
+
+PUB dec(value):result | i, x    'print decimal value  'rja added :result
+
+'' Print a decimal number
+  result := 0
+  x := value == NEGX                                                            'Check for max negative
+  if value < 0
+    value := ABS(value+x)  'RJA                                                      'If negative, make positive; adjust for max negative
+    tx("-")                                                                     'and output sign
+
+  i := 1_000_000_000                                                            'Initialize divisor
+
+  repeat 10                                                                     'Loop for 10 digits
+    if value >= i  'rja
+      tx(value / i + "0" + x*(i == 1))                                          'If non-zero digit, output digit; adjust for max negative
+      value //= i                                                               'and digit from value
+      result~~                                                                  'flag non-zero found
+    elseif result or i == 1
+      tx("0")                                                                   'If zero digit (or only digit) output it
+    i /= 10                                                                     'Update divisor
+
+PUB hex(val, digits) | shft, x     'print hex value
+  shft := (digits - 1) << 2
+  repeat digits
+    x := (val >> shft) & $F
+    shft -= 4
+    if (x >= 10)   'rja
+      x := (x - 10) + "A"
+    else
+      x := x + "0"
+    tx(x)
+
+
+PUB Bin(value, digits)     'pring binary value
+
+  value <<= 32 - digits
+  repeat digits
+    tx((value ROL= 1) & 1 + "0")                         'Transmit the ASCII value of each binary digit

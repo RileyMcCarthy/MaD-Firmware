@@ -1,0 +1,14 @@
+{
+    "name": "APP",
+    "version": "1.0.0",
+    "keywords": "application",
+    "description": "Application Layer for the project",
+    "dependencies": [
+        {
+          "name": "IO"
+        },
+        {
+          "name": "DEV"
+        }
+      ]
+}

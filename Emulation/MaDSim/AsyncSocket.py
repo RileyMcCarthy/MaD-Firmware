@@ -23,7 +23,7 @@ class AsyncSocketServer(AsyncHandler, asyncio.Protocol):
             logger.error(f"Error sending data {self.host}:{self.port}: {e}")
 
     def connection_made(self, transport):
-        #logger.info(f'Socket connection made: {self.host}:{self.port}')
+        logger.info(f'Socket connection made: {self.host}:{self.port}')
         self.transport = transport
 
     def data_received(self, data):

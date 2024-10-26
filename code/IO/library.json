@@ -1,0 +1,11 @@
+{
+  "name": "IO",
+  "version": "1.0.0",
+  "keywords": "IO Layer",
+  "description": "Input/output drivers",
+  "dependencies": [
+    {
+      "name": "HAL"
+    }
+  ]
+}

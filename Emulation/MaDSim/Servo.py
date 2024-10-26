@@ -36,7 +36,6 @@ class Servo():
         self.enc_b = enc_b
 
     def increment_steps(self, steps: bytes):
-        #logger.info(f"Servo: {self.steps}")
         self.steps += steps[0]
         if self.direction:
             self.enc_a.set_state(0)

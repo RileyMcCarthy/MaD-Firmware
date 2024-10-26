@@ -7,3 +7,4 @@ emulation/__pycache__
 emulation/venv
 Emulation/MaDSim.log
 Emulation/MaDSim/__pycache__
+.DS_Store
