@@ -6,7 +6,7 @@ from time import sleep
 socket_port_base = 9500
 
 # Build firmware
-firmware = MaDSim.FirmwareRunner("emulator", "../")
+firmware = MaDSim.FirmwareRunner("native", "../")
 firmware.clean()
 firmware.build()
 
@@ -72,9 +72,9 @@ servo_enc_b = MaDSim.GPIO()
 MaDSim.AsyncConnector(servo_enc_b, async_server[10])
 servo = MaDSim.Servo(servo_step, servo_dir, servo_enc_a, servo_enc_b)
 
-force_gauge_pin = 0
 forceGauge = MaDSim.SimulatedADS122U04()
-MaDSim.AsyncConnector(forceGauge, async_server[0])
+MaDSim.AsyncConectorSingle(forceGauge, async_server[0])
+MaDSim.AsyncConectorSingle(async_server[2], forceGauge)
 
 # socat -d -d pty,raw,echo=0,link=/tmp/tty.rpi_client pty,raw,echo=0,link=/tmp/tty.rpi
 rpi_pin = 53

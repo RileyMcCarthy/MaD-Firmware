@@ -67,6 +67,7 @@ void init_simulator()
             perror("Error creating socket for pin");
             exit(0);
         }
+        _waitms(10);
     }
 }
 
@@ -248,6 +249,10 @@ int _pinr(int pin)
         // Check if there is data in the queue
         pin_state = socketio_poll(__gpio[pin].socket_id);
     }
+    else if (__gpio[pin].mode == (P_OE | P_ASYNC_TX))
+    {
+        pin_state = 1; // flush buffer
+    }
     else
     {
         bool data_available = false;
@@ -278,7 +283,7 @@ void _wxpin(int pin, uint32_t val)
 
 void _wypin(int pin, uint32_t val)
 {
-    // @TODO implement
+    socketio_send(__gpio[pin].socket_id, (uint8_t)val);
 }
 
 void _akpin(int pin)
@@ -316,6 +321,11 @@ void _pinstart(int pin, uint32_t mode, uint32_t xval, uint32_t yval)
         __gpio[pin].mode = mode;
         DEBUG_INFO("Starting pin RX: %d\n", pin);
     }
+    else if (mode == (P_OE | P_ASYNC_TX))
+    {
+        __gpio[pin].mode = mode;
+        DEBUG_INFO("Starting pin TX: %d\n", pin);
+    }
     else
     {
         perror("Error starting pin, not implemented");
@@ -330,6 +340,10 @@ void _pinclear(int pin)
         DEBUG_INFO("Clearing pin RX: %d\n", pin);
         __gpio[pin].mode = 0;
         // socketio_close(__gpio[pin].socket_id);
+    }
+    else if (__gpio[pin].mode == (P_OE | P_ASYNC_TX))
+    {
+        DEBUG_INFO("Clearing pin TX: %d\n", pin);
     }
     else
     {

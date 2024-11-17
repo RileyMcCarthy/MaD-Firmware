@@ -14,3 +14,6 @@ class AsyncHandler:
 def AsyncConnector( handler1: AsyncHandler, handler2: AsyncHandler):
     handler1.set_tx_callback(handler2.rx)
     handler2.set_tx_callback(handler1.rx)
+
+def AsyncConectorSingle( handler1: AsyncHandler, handler2: AsyncHandler):
+    handler1.set_tx_callback(handler2.rx)

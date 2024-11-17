@@ -130,16 +130,6 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(FORCEGAUGE)
     }
 }
 
-// shuld be able to add spin2 code also to cogmanager, wont be useful for stack checking but should launch it...
-
-const dev_cogManager_channelConfig_S dev_cogManager_channelConfig[DEV_COGMANAGER_CHANNEL_COUNT] = {
-    DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MONITOR),
-    DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MOTOR),
-    DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(COMMUNICATION),
-    DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(CONTROL),
-    DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(LOGGER),
-};
-
 dev_cogManager_config_S dev_cogManager_config = {
     {
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MONITOR),
@@ -147,6 +137,7 @@ dev_cogManager_config_S dev_cogManager_config = {
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(COMMUNICATION),
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(CONTROL),
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(LOGGER),
+        DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(FORCEGAUGE),
     },
 };
 /**********************************************************************

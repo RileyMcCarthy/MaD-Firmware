@@ -50,8 +50,15 @@ typedef struct
 
 typedef struct
 {
+    bool ready;
+} dev_stepper_channelOutput_S;
+
+typedef struct
+{
     dev_stepper_channelRequest_S request;
     dev_stepper_channelRequest_S stagedRequest;
+    dev_stepper_channelOutput_S output;
+    dev_stepper_channelOutput_S stagedOutput;
 
     dev_stepper_state_E state;
 
@@ -108,6 +115,13 @@ static void dev_stepper_private_stageRequest(dev_stepper_channel_E ch)
 {
     SM_LOCK_REQ_BLOCK();
     dev_stepper_data.channels[ch].stagedRequest = dev_stepper_data.channels[ch].request;
+    SM_LOCK_REL();
+}
+
+static void dev_stepper_private_stageOutput(dev_stepper_channel_E ch)
+{
+    SM_LOCK_REQ_BLOCK();
+    dev_stepper_data.channels[ch].stagedOutput = dev_stepper_data.channels[ch].output;
     SM_LOCK_REL();
 }
 
@@ -226,13 +240,16 @@ static void dev_stepper_private_runAction(dev_stepper_channel_E ch)
     switch (dev_stepper_data.channels[ch].state)
     {
     case DEV_STEPPER_STATE_INIT:
+        dev_stepper_data.channels[ch].output.ready = false;
         break;
     case DEV_STEPPER_STATE_STOPPED:
+        dev_stepper_data.channels[ch].output.ready = true;
         break;
     case DEV_STEPPER_STATE_MOVING_CW:
     case DEV_STEPPER_STATE_MOVING_CCW:
         dev_stepper_data.channels[ch].moveComplete = (_pinr(dev_stepper_channelConfig[ch].pinStep) != 0);
         dev_stepper_data.channels[ch].currentSteps = dev_stepper_private_computeHardwarePulseCount(ch);
+        dev_stepper_data.channels[ch].output.ready = true;
         break;
     case DEV_STEPPER_STATE_MOVING_SLOW_CW:
         _pinl(dev_stepper_channelConfig[ch].pinStep);
@@ -241,6 +258,7 @@ static void dev_stepper_private_runAction(dev_stepper_channel_E ch)
         _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
         dev_stepper_data.channels[ch].currentSteps++;
         dev_stepper_data.channels[ch].moveComplete = (dev_stepper_data.channels[ch].currentSteps == dev_stepper_data.channels[ch].currentMove.targetSteps);
+        dev_stepper_data.channels[ch].output.ready = true;
         break;
     case DEV_STEPPER_STATE_MOVING_SLOW_CCW:
         _pinl(dev_stepper_channelConfig[ch].pinStep);
@@ -249,9 +267,11 @@ static void dev_stepper_private_runAction(dev_stepper_channel_E ch)
         _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
         dev_stepper_data.channels[ch].currentSteps--;
         dev_stepper_data.channels[ch].moveComplete = (dev_stepper_data.channels[ch].currentSteps == dev_stepper_data.channels[ch].currentMove.targetSteps);
+        dev_stepper_data.channels[ch].output.ready = true;
         break;
     case DEV_STEPPER_STATE_COUNT:
     default:
+        dev_stepper_data.channels[ch].output.ready = false;
         break;
     }
 }
@@ -278,6 +298,7 @@ void dev_stepper_run()
             dev_stepper_private_entryAction(ch);
         }
         dev_stepper_private_runAction(ch);
+        dev_stepper_private_stageOutput(ch);
     }
 }
 
@@ -317,6 +338,15 @@ int32_t dev_stepper_getTarget(dev_stepper_channel_E ch)
 bool dev_stepper_atTarget(dev_stepper_channel_E ch)
 {
     return dev_stepper_data.channels[ch].request.move.targetSteps == dev_stepper_data.channels[ch].currentSteps;
+}
+
+bool dev_stepper_isReady(dev_stepper_channel_E ch)
+{
+    bool ready;
+    SM_LOCK_REQ_BLOCK();
+    ready = dev_stepper_data.channels[ch].stagedOutput.ready;
+    SM_LOCK_REL();
+    return ready;
 }
 
 /**********************************************************************

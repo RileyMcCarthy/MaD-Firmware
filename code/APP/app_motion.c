@@ -247,7 +247,7 @@ static void app_motion_private_moveManager_entryAction(void)
         {
             steps += app_motion_data.inputs.positionSteps;
         }
-        DEBUG_INFO("G0 command moving to steps %d at %d steps/s", steps, feedrate);
+        DEBUG_INFO("G0 command moving to steps %d at %d steps/s\n", steps, feedrate);
         dev_stepper_move(DEV_STEPPER_CHANNEL_MAIN, steps, feedrate);
         break;
     case G2_CW_ARC_MOVE:

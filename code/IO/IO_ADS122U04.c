@@ -230,13 +230,11 @@ static void IO_ADS122U04_writeRegister(IO_ADS122U04_channel_E channel, IO_ADS122
     HAL_serial_transmitData(IO_ADS122U04_channelConfig[channel].serialChannel, package, 3);
 }
 
-static uint8_t IO_ADS122U04_readRegister(IO_ADS122U04_channel_E channel, IO_ADS122U04_configRegister_E registerAddress)
+static bool IO_ADS122U04_readRegister(IO_ADS122U04_channel_E channel, IO_ADS122U04_configRegister_E registerAddress, uint8_t *data)
 {
-    uint8_t temp;
     const uint8_t package[2] = {IO_ADS122U04_SYNC, 0x20 + (registerAddress << 1)};
     HAL_serial_transmitData(IO_ADS122U04_channelConfig[channel].serialChannel, package, 2);
-    HAL_serial_recieveDataTimeout(IO_ADS122U04_channelConfig[channel].serialChannel, &temp, 1, 100);
-    return temp;
+    return HAL_serial_recieveDataTimeout(IO_ADS122U04_channelConfig[channel].serialChannel, data, 1, 100);
 }
 
 static void IO_ADS122U04_sendCommand(IO_ADS122U04_channel_E channel, uint8_t command)
@@ -257,6 +255,7 @@ bool IO_ADS122U04_start(IO_ADS122U04_channel_E channel)
     IO_ADS122U04_sendCommand(channel, IO_ADS122U04_CMD_RESET);
     _waitms(100);
 
+
     // write the configuration
     for (IO_ADS122U04_configRegister_E reg = (IO_ADS122U04_configRegister_E)0U; reg < IO_ADS122U04_REGISTER_COUNT; reg++)
     {
@@ -266,25 +265,36 @@ bool IO_ADS122U04_start(IO_ADS122U04_channel_E channel)
     // read back the configuration
     for (IO_ADS122U04_configRegister_E reg = (IO_ADS122U04_configRegister_E)0U; reg < IO_ADS122U04_REGISTER_COUNT; reg++)
     {
-        uint8_t temp = IO_ADS122U04_readRegister(channel, reg);
+        uint8_t temp = 0U;
+        if (IO_ADS122U04_readRegister(channel, reg, &temp) == false)
+        {
+            DEBUG_ERROR("ADS122U04 Configuration Error: Register %d timeout\n", reg);
+            return false;
+        }
         if (temp != IO_ADS122U04_channelConfig[channel].configRegister[reg])
         {
-            DEBUG_ERROR("ADS122U04 Configuration Error: Expected %d, Got %d\n", IO_ADS122U04_channelConfig[channel].configRegister[reg], temp);
+            DEBUG_ERROR("ADS122U04 Configuration Error: Register %d, Expected %d, Got %d\n", reg, IO_ADS122U04_channelConfig[channel].configRegister[reg], temp);
             return false;
         }
     }
 
     // Begin conversion
     IO_ADS122U04_sendCommand(channel, IO_ADS122U04_CMD_START);
+    DEBUG_INFO("%s", "ADS122U04 Started\n");
 
     return true;
 }
 
-bool IO_ADS122U04_getConversion(IO_ADS122U04_channel_E channel, uint32_t *conversion, uint32_t timeout_ms)
+void IO_ADS122U04_stop(IO_ADS122U04_channel_E channel)
+{
+    HAL_serial_stop(IO_ADS122U04_channelConfig[channel].serialChannel);
+}
+
+bool IO_ADS122U04_receiveConversion(IO_ADS122U04_channel_E channel, uint32_t *conversion, uint32_t timeout_ms)
 {
     uint8_t bval[3];
     const bool valid = HAL_serial_recieveDataTimeout(IO_ADS122U04_channelConfig[channel].serialChannel, &bval[0], 3, timeout_ms);
-    *conversion = (bval[0] << 16) | (bval[1] << 8) | bval[2];
+    *conversion = (bval[2] << 16) | (bval[1] << 8) | bval[0];
     return valid;
 }
 

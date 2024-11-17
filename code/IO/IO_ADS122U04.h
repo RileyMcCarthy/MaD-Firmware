@@ -31,7 +31,7 @@ typedef enum
 
 bool IO_ADS122U04_start(IO_ADS122U04_channel_E channel);
 void IO_ADS122U04_stop(IO_ADS122U04_channel_E channel);
-bool IO_ADS122U04_getConversion(IO_ADS122U04_channel_E channel, uint32_t *conversion, uint32_t timeout_ms);
+bool IO_ADS122U04_receiveConversion(IO_ADS122U04_channel_E channel, uint32_t *conversion, uint32_t timeout_ms);
 
 /**********************************************************************
  * End of File

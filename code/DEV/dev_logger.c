@@ -27,7 +27,7 @@
  **********************************************************************/
 typedef struct
 {
-    bool loggingEnabled;
+    bool requestEnabled;
     char fileName[255];
 } dev_logger_channelInput_S;
 
@@ -36,6 +36,7 @@ typedef struct
     dev_logger_channelInput_S stagedInput;
     dev_logger_channelInput_S input;
 
+    bool enabled;
     bool queueEmpty;
     bool queueFull;
     FILE *file;
@@ -72,7 +73,7 @@ static dev_logger_state_E dev_logger_getDesiredState(dev_logger_channel_E channe
     switch (dev_logger_data.channelData[channel].state)
     {
     case DEV_LOGGER_STATE_INIT:
-        if (dev_logger_data.channelData[channel].input.loggingEnabled)
+        if (dev_logger_data.channelData[channel].input.requestEnabled)
         {
             desiredState = DEV_LOGGER_STATE_OPEN;
         }
@@ -81,20 +82,23 @@ static dev_logger_state_E dev_logger_getDesiredState(dev_logger_channel_E channe
         if (dev_logger_data.channelData[channel].file != NULL)
         {
             desiredState = DEV_LOGGER_STATE_WAITING;
+            DEBUG_INFO("DEV_LOGGER: Opened file %s\n", dev_logger_data.channelData[channel].input.fileName);
         }
         else
         {
             desiredState = DEV_LOGGER_STATE_INIT;
+            DEBUG_ERROR("DEV_LOGGER: Failed to open file %s, make sure the directory exists\n", dev_logger_data.channelData[channel].input.fileName);
         }
         break;
     case DEV_LOGGER_STATE_WAITING:
-        if (dev_logger_data.channelData[channel].input.loggingEnabled == false)
-        {
-            desiredState = DEV_LOGGER_STATE_CLOSE;
-        }
-        else if (dev_logger_data.channelData[channel].queueEmpty == false)
+        if (dev_logger_data.channelData[channel].queueEmpty == false)
         {
             desiredState = DEV_LOGGER_STATE_WRITE_DATA;
+        }
+        else if (dev_logger_data.channelData[channel].input.requestEnabled == false)
+        {
+            // Queue is empty and logging is disabled
+            desiredState = DEV_LOGGER_STATE_CLOSE;
         }
         else
         {
@@ -102,14 +106,7 @@ static dev_logger_state_E dev_logger_getDesiredState(dev_logger_channel_E channe
         }
         break;
     case DEV_LOGGER_STATE_WRITE_DATA:
-        if (dev_logger_config.channelConfig[channel].isSingleShot)
-        {
-            desiredState = DEV_LOGGER_STATE_CLOSE;
-        }
-        else
-        {
-            desiredState = DEV_LOGGER_STATE_WAITING;
-        }
+        desiredState = DEV_LOGGER_STATE_WAITING;
         break;
     case DEV_LOGGER_STATE_CLOSE:
         desiredState = DEV_LOGGER_STATE_INIT;
@@ -132,14 +129,6 @@ static void dev_logger_private_entryAction(dev_logger_channel_E channel)
         DEBUG_INFO("DEV_LOGGER: Opening file %s\n", dev_logger_data.channelData[channel].input.fileName);
         DEBUG_INFO("DEV_LOGGER: Write type %s\n", dev_logger_config.channelConfig[channel].writeType);
         dev_logger_data.channelData[channel].file = fopen(dev_logger_data.channelData[channel].input.fileName, dev_logger_config.channelConfig[channel].writeType);
-        if (dev_logger_data.channelData[channel].file == NULL)
-        {
-            DEBUG_INFO("DEV_LOGGER: Failed to open file %s\n", dev_logger_data.channelData[channel].input.fileName);
-        }
-        else
-        {
-            DEBUG_INFO("DEV_LOGGER: Opened file %s\n", dev_logger_data.channelData[channel].input.fileName);
-        }
         break;
     case DEV_LOGGER_STATE_WAITING:
         break;
@@ -180,9 +169,9 @@ static void dev_logger_private_stageInputs(dev_logger_channel_E channel)
 {
     DEV_LOGGER_REQ_BLOCK();
     memcpy(&dev_logger_data.channelData[channel].input, &dev_logger_data.channelData[channel].stagedInput, sizeof(dev_logger_channelInput_S));
+    DEV_LOGGER_LOCK_REL();
     dev_logger_data.channelData[channel].queueEmpty = lib_staticQueue_isempty(&dev_logger_data.channelData[channel].queue);
     dev_logger_data.channelData[channel].queueFull = lib_staticQueue_isfull(&dev_logger_data.channelData[channel].queue);
-    DEV_LOGGER_LOCK_REL();
 }
 
 /**********************************************************************
@@ -224,7 +213,7 @@ bool dev_logger_start(dev_logger_channel_E channel, const char *fileName)
     if (channel < DEV_LOGGER_CHANNEL_COUNT)
     {
         DEV_LOGGER_REQ_BLOCK();
-        dev_logger_data.channelData[channel].stagedInput.loggingEnabled = true;
+        dev_logger_data.channelData[channel].stagedInput.requestEnabled = true;
         snprintf(dev_logger_data.channelData[channel].stagedInput.fileName, sizeof(dev_logger_data.channelData[channel].stagedInput.fileName), dev_logger_config.channelConfig[channel].nameFormat, fileName);
         DEBUG_INFO("DEV_LOGGER: Starting channel %d with file %s\n", channel, dev_logger_data.channelData[channel].stagedInput.fileName);
         success = true;
@@ -239,13 +228,12 @@ bool dev_logger_append(dev_logger_channel_E channel, dev_logger_channel_E channe
     if (channel < DEV_LOGGER_CHANNEL_COUNT)
     {
         DEV_LOGGER_REQ_BLOCK();
-        const bool fileNameEmpty = strncmp(dev_logger_data.channelData[channelToAppend].stagedInput.fileName, "", 255) == 0;
-        const bool loggingEnabled = dev_logger_data.channelData[channelToAppend].stagedInput.loggingEnabled;
-        if (loggingEnabled == false && fileNameEmpty == false)
+        const bool loggingDisabled = dev_logger_data.channelData[channelToAppend].stagedInput.requestEnabled == false;
+        if (loggingDisabled)
         {
             strncpy(dev_logger_data.channelData[channel].stagedInput.fileName, dev_logger_data.channelData[channelToAppend].stagedInput.fileName, sizeof(dev_logger_data.channelData[channel].stagedInput.fileName) - 1);
             DEBUG_INFO("DEV_LOGGER: Appending channel %d with file %s\n", channel, dev_logger_data.channelData[channel].stagedInput.fileName);
-            dev_logger_data.channelData[channel].stagedInput.loggingEnabled = true;
+            dev_logger_data.channelData[channel].stagedInput.requestEnabled = true;
             success = true;
         }
         DEV_LOGGER_LOCK_REL();
@@ -259,7 +247,7 @@ bool dev_logger_stop(dev_logger_channel_E channel)
     if (channel < DEV_LOGGER_CHANNEL_COUNT)
     {
         DEV_LOGGER_REQ_BLOCK();
-        dev_logger_data.channelData[channel].stagedInput.loggingEnabled = false;
+        dev_logger_data.channelData[channel].stagedInput.requestEnabled = false;
         success = true;
         DEV_LOGGER_LOCK_REL();
     }
@@ -274,6 +262,16 @@ bool dev_logger_push(dev_logger_channel_E channel, void *data, uint32_t size)
         success = lib_staticQueue_push(&dev_logger_data.channelData[channel].queue, data);
     }
     return success;
+}
+
+bool dev_logger_isEmpty(dev_logger_channel_E channel)
+{
+    bool isEmpty = false;
+    if (channel < DEV_LOGGER_CHANNEL_COUNT)
+    {
+        isEmpty = lib_staticQueue_isempty(&dev_logger_data.channelData[channel].queue);
+    }
+    return isEmpty;
 }
 
 /**********************************************************************

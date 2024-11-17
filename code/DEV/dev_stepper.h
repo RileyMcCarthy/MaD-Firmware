@@ -51,6 +51,9 @@ dev_stepper_state_E dev_stepper_getState(dev_stepper_channel_E ch);
 int32_t dev_stepper_getTarget(dev_stepper_channel_E ch);
 void dev_stepper_enable(dev_stepper_channel_E ch, bool enabled);
 bool dev_stepper_atTarget(dev_stepper_channel_E ch);
+
+// threadsafe
+bool dev_stepper_isReady(dev_stepper_channel_E ch);
 /**********************************************************************
  * End of File
  **********************************************************************/

@@ -40,8 +40,8 @@ typedef struct
 
 typedef struct
 {
-    uint32_t zeroForceCount; // adc at zero force
-    uint32_t countPerForce;  // adc count per force
+    int32_t zeroForceCount; // adc at zero force
+    int32_t countPerForce;  // adc count per force
 } dev_forceGauge_channelNVRAM_S;
 /**********************************************************************
  * Public Function Definitions

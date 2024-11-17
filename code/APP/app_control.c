@@ -10,6 +10,8 @@
 
 #include "dev_nvram.h"
 #include "dev_cogManager.h"
+#include "dev_forceGauge.h"
+#include "dev_stepper.h"
 #include "watchdog.h"
 
 #include "HAL_GPIO.h"
@@ -45,6 +47,7 @@ typedef struct
     MachineProfile machineProfile;
     bool motionReqEnabled;
     bool motionReqTest;
+    bool forceGaugeReady;
 } app_control_input_S;
 
 typedef struct
@@ -135,8 +138,9 @@ void app_control_private_processMachineCheck(void)
     {
         app_control_data.machineCheckData.ESDChainBroken = APP_CONTROL_ESD_NONE;
     }
-    app_control_data.machineCheckData.servoError = false;      // TODO
-    app_control_data.machineCheckData.forceGaugeError = false; // TODO
+    // @TODO: should combine dev_stepper/dev_encoder into dev_servo and we can check for feedback etc.
+    app_control_data.machineCheckData.servoError = dev_stepper_isReady(DEV_STEPPER_CHANNEL_MAIN);
+    app_control_data.machineCheckData.forceGaugeError = dev_forceGauge_isReady(DEV_FORCEGAUGE_CHANNEL_MAIN);
 
     app_control_data.machineCheckError = app_control_data.machineCheckData.selfCheckError ||
                                          app_control_data.machineCheckData.watchdogError ||
@@ -152,7 +156,11 @@ app_control_state_E app_control_private_getDesiredState(void)
     {
         desiredState = APP_CONTROL_STATE_MACHINE_CHECK;
     }
-    else
+    else if (app_control_data.input.motionReqEnabled == false)
+    {
+        desiredState = APP_CONTROL_STATE_MOTION_DISABLED;
+    }
+    else 
     {
         switch (app_control_data.state)
         {
@@ -160,32 +168,25 @@ app_control_state_E app_control_private_getDesiredState(void)
             desiredState = APP_CONTROL_STATE_MOTION_MANUAL;
             break;
         case APP_CONTROL_STATE_MOTION_DISABLED:
-            if (app_control_data.input.motionReqEnabled)
-            {
-                desiredState = APP_CONTROL_STATE_MOTION_MANUAL;
-            }
+            desiredState = APP_CONTROL_STATE_MOTION_MANUAL;
             break;
         case APP_CONTROL_STATE_MOTION_MANUAL:
-            if (app_control_data.input.motionReqEnabled == false)
-            {
-                desiredState = APP_CONTROL_STATE_MOTION_DISABLED;
-            }
-            else if (app_control_data.input.motionReqTest)
+            if (app_control_data.input.motionReqTest)
             {
                 desiredState = APP_CONTROL_STATE_MOTION_TEST;
             }
             break;
         case APP_CONTROL_STATE_MOTION_TEST:
-            if (app_control_data.input.motionReqEnabled == false)
-            {
-                desiredState = APP_CONTROL_STATE_MOTION_DISABLED;
-            }
-            else if (app_control_data.input.motionReqTest == false)
+            if (app_control_data.input.motionReqTest == false)
             {
                 desiredState = APP_CONTROL_STATE_MOTION_MANUAL;
             }
+        case APP_CONTROL_STATE_COUNT:
+        default:
+            break;
         }
     }
+    return desiredState;
 }
 /**********************************************************************
  * Public Function Definitions

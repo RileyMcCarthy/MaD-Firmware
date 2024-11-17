@@ -26,14 +26,13 @@
     static const char dev_logger_##channel##_nameFormat[] = nameformat;                     \
     static bool dev_logger_##channel##Format(FILE *file, lib_staticQueue_S *queue)
 
-#define DEV_LOGGER_CHANNEL_CREATE(channel, singleshot)                                            \
+#define DEV_LOGGER_CHANNEL_CREATE(channel)                                            \
     {                                                                                             \
         dev_logger_##channel##Format,                                                             \
         dev_logger_##channel##_writeType,                                                         \
         dev_logger_##channel##_dataBuffer,                                                        \
         sizeof(dev_logger_##channel##_dataBuffer) / sizeof(dev_logger_##channel##_dataBuffer[0]), \
         sizeof(dev_logger_##channel##_dataBuffer[0]),                                             \
-        singleshot,                                                                               \
         dev_logger_##channel##_nameFormat,                                                        \
     }
 /**********************************************************************
@@ -47,9 +46,6 @@ typedef enum
     DEV_LOGGER_STATE_WRITE_DATA, // write data
     DEV_LOGGER_STATE_CLOSE,      // close file
 } dev_logger_state_E;
-// Need to write header that is sent from main program.
-// might make struct for data or just use raw json
-// for now make struct a json of 512 bytes or something
 
 typedef struct
 {
@@ -58,7 +54,6 @@ typedef struct
     void *const queueBuffer;
     const uint32_t queueBufferSize;
     const uint32_t queueBufferItemSize;
-    const bool isSingleShot;
     const char *nameFormat;
 } dev_logger_channelConfig_S;
 
@@ -77,7 +72,7 @@ bool dev_logger_start(dev_logger_channel_E channel, const char *fileName);
 bool dev_logger_append(dev_logger_channel_E channel, dev_logger_channel_E channelToAppend);
 bool dev_logger_stop(dev_logger_channel_E channel);
 bool dev_logger_push(dev_logger_channel_E channel, void *data, uint32_t size);
-
+bool dev_logger_isEmpty(dev_logger_channel_E channel);
 /**********************************************************************
  * End of File
  **********************************************************************/

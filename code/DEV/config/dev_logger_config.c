@@ -25,7 +25,7 @@
  * Private Variable Definitions
  **********************************************************************/
 
-DEV_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, dev_logger_testSample_S, 64, "a+", SD_CARD_MOUNT_PATH "/tests/%s.csv")
+DEV_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, dev_logger_testSample_S, 64, "a+", SD_CARD_MOUNT_PATH "/test/%s.csv")
 {
     bool result = false;
     dev_logger_testSample_S sample;
@@ -52,8 +52,8 @@ DEV_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA_HEADER, dev_logger_testSampleHeader_S
 
 dev_logger_config_S dev_logger_config = {
     {
-        DEV_LOGGER_CHANNEL_CREATE(SAMPLE_DATA, false),
-        DEV_LOGGER_CHANNEL_CREATE(SAMPLE_DATA_HEADER, true),
+        DEV_LOGGER_CHANNEL_CREATE(SAMPLE_DATA),
+        DEV_LOGGER_CHANNEL_CREATE(SAMPLE_DATA_HEADER),
     },
 };
 

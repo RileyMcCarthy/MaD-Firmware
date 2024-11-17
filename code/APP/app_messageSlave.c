@@ -222,8 +222,8 @@ static void app_message_slave_private_runAction()
         break;
     case APP_MESSAGE_SLAVE_STATE_READING_HEADER:
         app_message_slave_data.dataLength = IO_protocol_recieveLength();
-        DEBUG_INFO("Command: %d\n", app_message_slave_data.commandRecieved);
-        DEBUG_INFO("Data length: %d\n", app_message_slave_data.dataLength);
+        //DEBUG_INFO("Command: %d\n", app_message_slave_data.commandRecieved);
+        //DEBUG_INFO("Data length: %d\n", app_message_slave_data.dataLength);
         break;
     case APP_MESSAGE_SLAVE_STATE_READING_DATA:
         if (app_message_slave_data.dataLength > app_message_slave_data.dataIndex)
@@ -388,6 +388,7 @@ app_message_slave_awk_E app_message_slave_private_decodeCommand()
             {
                 DEBUG_ERROR("%s", "Failed to push test header\n");
             }
+            dev_logger_stop(DEV_LOGGER_CHANNEL_SAMPLE_DATA_HEADER);
         }
         else
         {

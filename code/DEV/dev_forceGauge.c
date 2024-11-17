@@ -6,6 +6,7 @@
  **********************************************************************/
 #include "dev_forceGauge.h"
 #include "dev_nvram.h"
+#include "Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -13,7 +14,11 @@
 /*********************************************************************
  * Macros
  **********************************************************************/
-
+#define DEV_FORCEGAUGE_LOCK_REQ() _locktry(dev_forceGauge_data.lock)
+#define DEV_FORCEGAUGE_REQ_BLOCK()             \
+    while (DEV_FORCEGAUGE_LOCK_REQ() == false) \
+        ;
+#define DEV_FORCEGAUGE_LOCK_REL() _lockrel(dev_forceGauge_data.lock)
 /**********************************************************************
  * Typedefs
  **********************************************************************/
@@ -36,12 +41,18 @@ typedef struct
     dev_forceGauge_channelInput_S input;
     dev_forceGauge_channelNVRAM_S nvram;
     dev_forceGauge_channelOutput_S output;
+    dev_forceGauge_channelOutput_S stagedOutput;
 
     uint32_t retryCount;
 
     dev_forceGauge_state_E state;
-    int32_t lock;
 } dev_forceGauge_channelData_S;
+
+typedef struct 
+{
+    dev_forceGauge_channelData_S channel[DEV_FORCEGAUGE_CHANNEL_COUNT];
+    int32_t lock;
+} dev_forceGauge_data_S;
 /**********************************************************************
  * External Variables
  **********************************************************************/
@@ -49,7 +60,7 @@ extern const dev_forceGauge_channelConfig_S dev_forceGauge_channelConfig[DEV_FOR
 /**********************************************************************
  * Private Variable Definitions
  **********************************************************************/
-static dev_forceGauge_channelData_S dev_forceGauge_data[DEV_FORCEGAUGE_CHANNEL_COUNT];
+static dev_forceGauge_data_S dev_forceGauge_data;
 /**********************************************************************
  * Private Function Prototypes
  **********************************************************************/
@@ -57,37 +68,37 @@ static dev_forceGauge_channelData_S dev_forceGauge_data[DEV_FORCEGAUGE_CHANNEL_C
 /**********************************************************************
  * Private Function Definitions
  **********************************************************************/
-static void dev_forceGauge_private_processInputs(dev_forceGauge_channel_E channel)
-{
-    dev_forceGauge_data[channel].input.responding = IO_ADS122U04_getConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data[channel].input.rawADC, 1000);
-}
 
 static dev_forceGauge_state_E dev_forceGauge_private_getState(dev_forceGauge_channel_E channel)
 {
-    dev_forceGauge_state_E desiredState = dev_forceGauge_data[channel].state;
-    switch (dev_forceGauge_data[channel].state)
+    dev_forceGauge_state_E desiredState = dev_forceGauge_data.channel[channel].state;
+    switch (dev_forceGauge_data.channel[channel].state)
     {
     case DEV_FORCEGAUGE_STATE_INIT:
-        if (dev_forceGauge_data[channel].input.responding)
+        if (IO_ADS122U04_start(dev_forceGauge_channelConfig[channel].adcChannel))
         {
             desiredState = DEV_FORCEGAUGE_STATE_RUNNING;
         }
         break;
     case DEV_FORCEGAUGE_STATE_RUNNING:
-        if (dev_forceGauge_data[channel].input.responding == false)
+        if (dev_forceGauge_data.channel[channel].input.responding == false)
         {
             desiredState = DEV_FORCEGAUGE_STATE_ERROR;
         }
         break;
     case DEV_FORCEGAUGE_STATE_ERROR:
-        dev_forceGauge_data[channel].retryCount++;
-        if (dev_forceGauge_data[channel].input.responding)
+        if (dev_forceGauge_data.channel[channel].input.responding)
         {
             desiredState = DEV_FORCEGAUGE_STATE_RUNNING;
         }
-        else if (dev_forceGauge_data[channel].retryCount > 3U)
+        else if (dev_forceGauge_data.channel[channel].retryCount > 3U)
         {
             desiredState = DEV_FORCEGAUGE_STATE_INIT;
+            IO_ADS122U04_stop(dev_forceGauge_channelConfig[channel].adcChannel);
+        }
+        else
+        {
+            dev_forceGauge_data.channel[channel].retryCount++;
         }
         break;
     default:
@@ -98,22 +109,41 @@ static dev_forceGauge_state_E dev_forceGauge_private_getState(dev_forceGauge_cha
 
 static void dev_forceGauge_private_runAction(dev_forceGauge_channel_E channel)
 {
-    switch (dev_forceGauge_data[channel].state)
+    switch (dev_forceGauge_data.channel[channel].state)
     {
     case DEV_FORCEGAUGE_STATE_INIT:
-        dev_forceGauge_data[channel].output.ready = false;
+        dev_forceGauge_data.channel[channel].output.ready = false;
         break;
     case DEV_FORCEGAUGE_STATE_RUNNING:
-        dev_forceGauge_data[channel].output.force = (dev_forceGauge_data[channel].input.rawADC - dev_forceGauge_data[channel].nvram.zeroForceCount) / dev_forceGauge_data[channel].nvram.countPerForce;
-        dev_forceGauge_data[channel].output.index++;
-        dev_forceGauge_data[channel].output.ready = true;
+        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100);
+        if (dev_forceGauge_data.channel[channel].input.rawADC > dev_forceGauge_data.channel[channel].nvram.zeroForceCount)
+        {
+            const int32_t nomalizedCount = dev_forceGauge_data.channel[channel].input.rawADC - dev_forceGauge_data.channel[channel].nvram.zeroForceCount;
+            dev_forceGauge_data.channel[channel].output.force = (nomalizedCount) / dev_forceGauge_data.channel[channel].nvram.countPerForce;
+        }
+        else
+        {
+            const int32_t nomalizedCount = dev_forceGauge_data.channel[channel].nvram.zeroForceCount - dev_forceGauge_data.channel[channel].input.rawADC;
+            dev_forceGauge_data.channel[channel].output.force = -1*(nomalizedCount) / dev_forceGauge_data.channel[channel].nvram.countPerForce;
+        }
+        //DEBUG_INFO("Force Gauge %d: %d, %d, %d, %d\n", channel, dev_forceGauge_data.channel[channel].output.force, dev_forceGauge_data.channel[channel].input.rawADC, dev_forceGauge_data.channel[channel].nvram.zeroForceCount, dev_forceGauge_data.channel[channel].nvram.countPerForce);
+        dev_forceGauge_data.channel[channel].output.index++;
+        dev_forceGauge_data.channel[channel].output.ready = true;
         break;
     case DEV_FORCEGAUGE_STATE_ERROR:
-        dev_forceGauge_data[channel].output.ready = false;
+        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100);
+        dev_forceGauge_data.channel[channel].output.ready = false;
         break;
     default:
         break;
     }
+}
+
+static void dev_forceGauge_private_stageOutput(dev_forceGauge_channel_E channel)
+{
+    DEV_FORCEGAUGE_REQ_BLOCK();
+    dev_forceGauge_data.channel[channel].stagedOutput = dev_forceGauge_data.channel[channel].output;
+    DEV_FORCEGAUGE_LOCK_REL();
 }
 
 /**********************************************************************
@@ -138,36 +168,53 @@ void dev_forceGauge_init(int lock)
 
     for (dev_forceGauge_channel_E channel = (dev_forceGauge_channel_E)0U; channel < DEV_FORCEGAUGE_CHANNEL_COUNT; channel++)
     {
-        dev_forceGauge_data[channel].lock = lock;
-        dev_forceGauge_data[channel].state = DEV_FORCEGAUGE_STATE_INIT;
-        dev_forceGauge_data[channel].nvram.zeroForceCount = machineProfile.configuration.forceGaugeOffset; // @todo make this voltage :)
-        dev_forceGauge_data[channel].nvram.countPerForce = machineProfile.configuration.forceGaugeGain;
+        dev_forceGauge_data.channel[channel].state = DEV_FORCEGAUGE_STATE_INIT;
+        dev_forceGauge_data.channel[channel].nvram.zeroForceCount = machineProfile.configuration.forceGaugeOffset; // @todo make this voltage :)
+        dev_forceGauge_data.channel[channel].nvram.countPerForce = machineProfile.configuration.forceGaugeGain;
     }
+    dev_forceGauge_data.lock = lock;
 }
 
 void dev_forceGauge_run()
 {
     for (dev_forceGauge_channel_E channel = (dev_forceGauge_channel_E)0U; channel < DEV_FORCEGAUGE_CHANNEL_COUNT; channel++)
     {
-        dev_forceGauge_private_processInputs(channel);
-        dev_forceGauge_data[channel].state = dev_forceGauge_private_getState(channel);
+        dev_forceGauge_state_E desiredState = dev_forceGauge_private_getState(channel);
+        if (dev_forceGauge_data.channel[channel].state != desiredState)
+        {
+            DEBUG_INFO("Force Gauge State: %d->%d\n", dev_forceGauge_data.channel[channel].state, desiredState);
+            dev_forceGauge_data.channel[channel].state = desiredState;
+        }
         dev_forceGauge_private_runAction(channel);
+        dev_forceGauge_private_stageOutput(channel);
     }
 }
 
 int32_t dev_forceGauge_getForce(dev_forceGauge_channel_E channel)
 {
-    return dev_forceGauge_data[channel].output.force;
+    int32_t force;
+    DEV_FORCEGAUGE_REQ_BLOCK();
+    force = dev_forceGauge_data.channel[channel].stagedOutput.force;
+    DEV_FORCEGAUGE_LOCK_REL();
+    return force;
 }
 
 uint32_t dev_forceGauge_getIndex(dev_forceGauge_channel_E channel)
 {
-    return dev_forceGauge_data[channel].output.index;
+    uint32_t index;
+    DEV_FORCEGAUGE_REQ_BLOCK();
+    index = dev_forceGauge_data.channel[channel].stagedOutput.index;
+    DEV_FORCEGAUGE_LOCK_REL();
+    return index;
 }
 
 bool dev_forceGauge_isReady(dev_forceGauge_channel_E channel)
 {
-    return dev_forceGauge_data[channel].output.ready;
+    bool ready;
+    DEV_FORCEGAUGE_REQ_BLOCK();
+    ready = dev_forceGauge_data.channel[channel].stagedOutput.ready;
+    DEV_FORCEGAUGE_LOCK_REL();
+    return ready;
 }
 
 /**********************************************************************
