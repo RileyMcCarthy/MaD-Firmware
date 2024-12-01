@@ -1,6 +1,0 @@
-{
-  "name": "HALCommon",
-  "version": "1.0.0",
-  "keywords": "Hardware Layer",
-  "description": "Hardware abstraction layer common to all platforms"
-}
