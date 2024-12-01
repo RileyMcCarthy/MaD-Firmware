@@ -4,7 +4,7 @@
 /**********************************************************************
  * Includes
  **********************************************************************/
-#include "dev_logger.h"
+#include "IO_logger.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -25,10 +25,10 @@
  * Private Variable Definitions
  **********************************************************************/
 
-DEV_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, dev_logger_testSample_S, 64, "a+", SD_CARD_MOUNT_PATH "/test/%s.csv")
+IO_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, IO_logger_testSample_S, 64, "a+", SD_CARD_MOUNT_PATH "/test/%s.csv")
 {
     bool result = false;
-    dev_logger_testSample_S sample;
+    IO_logger_testSample_S sample;
     if (lib_staticQueue_pop(queue, &sample))
     {
         fprintf(file, "%d,%d,%d,%d\n", sample.time, sample.index, sample.force, sample.position);
@@ -37,9 +37,9 @@ DEV_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, dev_logger_testSample_S, 64, "a+", S
     return result;
 }
 
-dev_logger_config_S dev_logger_config = {
+IO_logger_config_S IO_logger_config = {
     {
-        DEV_LOGGER_CHANNEL_CREATE(SAMPLE_DATA),
+        IO_LOGGER_CHANNEL_CREATE(SAMPLE_DATA),
     },
 };
 

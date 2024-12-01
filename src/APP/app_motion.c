@@ -318,8 +318,8 @@ void app_motion_init(int lock)
     MachineProfile machineProfile;
     dev_nvram_getChannelData(DEV_NVRAM_CHANNEL_MACHINE_PROFILE, &machineProfile, sizeof(MachineProfile));
     app_motion_data.stepsPerMM = machineProfile.configuration.servoStepPermm;
-    (void)lib_staticQueue_init_lock(&app_motion_data.manualQueue, app_motion_data.manualBuffer, MOTION_MANUAL_BUFFER_SIZE, sizeof(app_motion_move_t), lock);
-    (void)lib_staticQueue_init_lock(&app_motion_data.testQueue, app_motion_data.testBuffer, MOTION_TEST_BUFFER_SIZE, sizeof(app_motion_move_t), lock);
+    (void)lib_staticQueue_init(&app_motion_data.manualQueue, app_motion_data.manualBuffer, MOTION_MANUAL_BUFFER_SIZE, sizeof(app_motion_move_t), lock);
+    (void)lib_staticQueue_init(&app_motion_data.testQueue, app_motion_data.testBuffer, MOTION_TEST_BUFFER_SIZE, sizeof(app_motion_move_t), lock);
 }
 
 void app_motion_run()

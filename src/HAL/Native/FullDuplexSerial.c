@@ -40,8 +40,10 @@ bool fds_start(FullDuplexSerial *self, uint8_t rxpin, uint8_t txpin, uint8_t mod
         if (self->socket_id > 0)
         {
             // Initialize the queues
-            lib_staticQueue_init(&(self->rx_queue), self->rx_buffer, RX_BUFFER_SIZE, sizeof(uint8_t));
-            lib_staticQueue_init(&(self->tx_queue), self->tx_buffer, TX_BUFFER_SIZE, sizeof(uint8_t));
+            int lockRX = _locknew();
+            int lockTX = _locknew();
+            lib_staticQueue_init(&(self->rx_queue), self->rx_buffer, RX_BUFFER_SIZE, sizeof(uint8_t), lockRX);
+            lib_staticQueue_init(&(self->tx_queue), self->tx_buffer, TX_BUFFER_SIZE, sizeof(uint8_t), lockTX);
 
             self->cog_id = _cogstart_C(fds_thread, self, &(self->stack[0]), sizeof(long) * SERIAL_MEMORY_SIZE);
             result = (self->cog_id > 0);

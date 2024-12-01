@@ -3,26 +3,15 @@
 #include <string.h>
 #include <stdio.h>
 
-bool lib_staticQueue_init(lib_staticQueue_S *queue, void *buf, int max_size, int item_size)
+bool lib_staticQueue_init(lib_staticQueue_S *queue, void *buf, int max_size, int item_size, int lock)
 {
     queue->buf = buf;
     queue->max_size = max_size;
     queue->item_size = item_size;
     queue->front = 0;
     queue->rear = 0;
-    queue->_lock = _locknew();
-    return queue->_lock != -1;
-}
-
-bool lib_staticQueue_init_lock(lib_staticQueue_S *queue, void *buf, int max_size, int item_size, int _lock)
-{
-    queue->buf = buf;
-    queue->max_size = max_size;
-    queue->item_size = item_size;
-    queue->front = 0;
-    queue->rear = 0;
-    queue->_lock = _lock;
-    return queue->_lock != -1;
+    queue->lock = lock;
+    return queue->lock != -1;
 }
 
 bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
@@ -33,7 +22,7 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
         return false;
     }
 
-    while (_locktry(queue->_lock) == false)
+    while (_locktry(queue->lock) == false)
     {
         // wait for lock
     }
@@ -41,7 +30,7 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
     if (lib_staticQueue_isfull(queue))
     {
         printf("lib_staticQueue_push: data is FULL\n");
-        _lockrel(queue->_lock);
+        _lockrel(queue->lock);
         return false;
     }
 
@@ -50,19 +39,19 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
     if (queue->rear == queue->max_size)
         queue->rear = 0;
 
-    _lockrel(queue->_lock);
+    _lockrel(queue->lock);
     return true;
 }
 
 bool lib_staticQueue_pop(lib_staticQueue_S *queue, void *data)
 {
-    while (_locktry(queue->_lock) == false)
+    while (_locktry(queue->lock) == false)
     {
         // wait for lock
     }
     if (lib_staticQueue_isempty(queue))
     {
-        _lockrel(queue->_lock);
+        _lockrel(queue->lock);
         return false;
     }
 
@@ -76,7 +65,7 @@ bool lib_staticQueue_pop(lib_staticQueue_S *queue, void *data)
         queue->front = 0;
     }
 
-    _lockrel(queue->_lock);
+    _lockrel(queue->lock);
     return true;
 }
 
@@ -92,18 +81,18 @@ bool lib_staticQueue_isfull(lib_staticQueue_S *queue)
 
 void lib_staticQueue_empty(lib_staticQueue_S *queue)
 {
-    while (!_locktry(queue->_lock))
+    while (_locktry(queue->lock) == 0)
     {
         // wait for lock
     }
     queue->front = 0;
     queue->rear = 0;
-    _lockrel(queue->_lock);
+    _lockrel(queue->lock);
 }
 
 int32_t lib_staticQueue_count(lib_staticQueue_S *queue)
 {
-    while (!_locktry(queue->_lock))
+    while (_locktry(queue->lock) == 0)
     {
         // wait for lock
     }
@@ -116,6 +105,6 @@ int32_t lib_staticQueue_count(lib_staticQueue_S *queue)
     {
         count = queue->max_size - queue->front + queue->rear;
     }
-    _lockrel(queue->_lock);
+    _lockrel(queue->lock);
     return count;
 }

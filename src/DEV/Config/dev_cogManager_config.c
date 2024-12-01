@@ -13,7 +13,7 @@
 #include "app_notification.h"
 #include "app_messageSlave.h"
 
-#include "dev_logger.h"
+#include "IO_logger.h"
 #include "dev_stepper.h"
 #include "dev_forceGauge.h"
 #include "ControlSystem.h"
@@ -101,7 +101,7 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(CONTROL)
 DEV_COGMANAGER_CHANNEL_CREATE_INIT(LOGGER, 1024)
 {
     DEBUG_INFO("%s", "Logger cog initializing\n");
-    dev_logger_init(lock);
+    IO_logger_init(lock);
 }
 
 DEV_COGMANAGER_CHANNEL_CREATE_RUN(LOGGER)
@@ -109,7 +109,7 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(LOGGER)
     DEBUG_INFO("%s", "Logger cog running\n");
     while (1)
     {
-        dev_logger_run();
+        IO_logger_run();
         watchdog_kick(WATCHDOG_CHANNEL_LOGGER);
     }
 }

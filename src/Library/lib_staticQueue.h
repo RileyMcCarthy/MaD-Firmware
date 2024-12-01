@@ -12,11 +12,10 @@ typedef struct
     int size;
     int max_size;
     int item_size;
-    int _lock;
+    int lock;
 } lib_staticQueue_S;
 
-bool lib_staticQueue_init(lib_staticQueue_S *queue, void *buf, int max_size, int item_size);
-bool lib_staticQueue_init_lock(lib_staticQueue_S *queue, void *buf, int max_size, int item_size, int _lock);
+bool lib_staticQueue_init(lib_staticQueue_S *queue, void *buf, int max_size, int item_size, int lock);
 bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data);
 bool lib_staticQueue_pop(lib_staticQueue_S *queue, void *data);
 void lib_staticQueue_empty(lib_staticQueue_S *queue);

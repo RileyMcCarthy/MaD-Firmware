@@ -14,7 +14,7 @@
 #include "JsonDecoder.h"
 #include "JsonEncoder.h"
 #include "dev_nvram.h"
-#include "dev_logger.h"
+#include "IO_logger.h"
 #include "IO_Debug.h"
 /**********************************************************************
  * Constants
@@ -370,16 +370,17 @@ app_message_slave_awk_E app_message_slave_private_decodeCommand()
     case IO_PROTOCOL_COMMAND_TEST_HEADER:
     {
         DEBUG_INFO("%s", "Recieving test header\n");
-        dev_logger_testSampleHeader_S testSampleHeader;
-        strncpy(testSampleHeader.header, app_message_slave_data.dataRX, sizeof(testSampleHeader.header) - 1);
+        IO_logger_testSampleHeader_S testSampleHeader;
+        const size_t headerLength = strnlen(app_message_slave_data.dataRX, sizeof(testSampleHeader.header)) - 1;
+        strncpy(testSampleHeader.header, app_message_slave_data.dataRX, headerLength);
         const char *name;
         if (json_to_test_header_name(&name, app_message_slave_data.dataRX))
         {
             DEBUG_INFO("Test header name: %s\n", name);
             DEBUG_INFO("Test Header content: %s\n", testSampleHeader.header);
             app_motion_clearMoveQueue(); // clear any remaining motion test moves before new profile
-            dev_logger_open(DEV_LOGGER_CHANNEL_SAMPLE_DATA, name);
-            if (dev_logger_addComment(DEV_LOGGER_CHANNEL_SAMPLE_DATA, app_message_slave_data.dataRX, strlen(app_message_slave_data.dataRX)))
+            IO_logger_open(IO_LOGGER_CHANNEL_SAMPLE_DATA, name);
+            if (IO_logger_addComment(IO_LOGGER_CHANNEL_SAMPLE_DATA, testSampleHeader.header, headerLength))
             {
                 DEBUG_INFO("%s", "Test header pushed\n");
                 awk = APP_MESSAGE_SLAVE_AWK_OK;
@@ -388,7 +389,7 @@ app_message_slave_awk_E app_message_slave_private_decodeCommand()
             {
                 DEBUG_ERROR("%s", "Failed to push test header\n");
             }
-            dev_logger_close(DEV_LOGGER_CHANNEL_SAMPLE_DATA);
+            IO_logger_close(IO_LOGGER_CHANNEL_SAMPLE_DATA);
         }
         else
         {

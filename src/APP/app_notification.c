@@ -167,7 +167,7 @@ void app_notification_init(int lock)
     app_notification_data.notificationReady = false;
     app_notification_data.state = APP_NOTIFICATION_STATE_INIT;
     strcpy(app_notification_data.notificationJSON, "");
-    lib_staticQueue_init_lock(&app_notification_data.notificationQueue, app_notification_data.notificationBuffer, APP_NOTIFICATION_BUFFER_SIZE, sizeof(app_notification_message_S), lock);
+    lib_staticQueue_init(&app_notification_data.notificationQueue, app_notification_data.notificationBuffer, APP_NOTIFICATION_BUFFER_SIZE, sizeof(app_notification_message_S), lock);
 }
 
 void app_notification_run()

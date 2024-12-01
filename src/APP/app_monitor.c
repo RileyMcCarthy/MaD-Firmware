@@ -80,7 +80,7 @@ Definitions
 #include "app_motion.h"
 
 #include "dev_nvram.h"
-#include "dev_logger.h"
+#include "IO_logger.h"
 #include "dev_forceGauge.h"
 
 #include "StateMachine.h"
@@ -218,7 +218,7 @@ void app_monitor_private_processLogging()
     case APP_MONITOR_LOGGING_STATE_IDLE:
         if (app_monitor_data.input.testRunning)
         {
-            if (dev_logger_reopen(DEV_LOGGER_CHANNEL_SAMPLE_DATA))
+            if (IO_logger_reopen(IO_LOGGER_CHANNEL_SAMPLE_DATA))
             {
                 app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_RUNNING;
             }
@@ -235,12 +235,12 @@ void app_monitor_private_processLogging()
         }
         else
         {
-            dev_logger_push(DEV_LOGGER_CHANNEL_SAMPLE_DATA, &app_monitor_data.sample, sizeof(app_monitor_sample_t));
+            IO_logger_push(IO_LOGGER_CHANNEL_SAMPLE_DATA, &app_monitor_data.sample, sizeof(app_monitor_sample_t));
         }
         break;
     case APP_MONITOR_LOGGING_STATE_STOPPING:
         app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_IDLE;
-        dev_logger_close(DEV_LOGGER_CHANNEL_SAMPLE_DATA);
+        IO_logger_close(IO_LOGGER_CHANNEL_SAMPLE_DATA);
         break;
     default:
         break;
