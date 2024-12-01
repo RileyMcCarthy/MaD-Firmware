@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "watchdog.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/

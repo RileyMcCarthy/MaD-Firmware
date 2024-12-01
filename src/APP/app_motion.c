@@ -20,7 +20,7 @@
 #include "IO_digitalPin.h"
 #include "lib_timer.h"
 
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "StateMachine.h"
 #include "watchdog.h"
 /**********************************************************************

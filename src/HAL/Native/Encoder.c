@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <propeller2.h>
 #include "SocketIO.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 void encoder_start(Encoder *self, uint8_t pinA, uint8_t pinB, uint8_t btn, bool d4x, int32_t preset, int32_t lo, int32_t hi)
 {

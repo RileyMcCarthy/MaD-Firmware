@@ -1,6 +1,6 @@
 #include "JSON.h"
 #include <stdio.h>
-#include "Debug.h"
+#include "IO_Debug.h"
 
 // Used for decoding string into tokens
 #define MAX_TOKENS 300

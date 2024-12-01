@@ -30,6 +30,8 @@
 #define LIB_UTILITY_TOGGLE_BIT(value, bit) ((value) ^= (1 << (bit)))
 #define LIB_UTILITY_GET_BIT(value, bit) (((value) >> (bit)) & 0x01)
 
+#define LIB_UTILITY_ARRAY_COUNT(array) (sizeof(array) / sizeof(array[0]))
+
 /*********************************************************************
  * Macros
  **********************************************************************/

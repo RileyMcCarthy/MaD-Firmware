@@ -1,5 +1,5 @@
 #include "StateMachine.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include <propeller2.h>
 #include <string.h>
 static MachineState machine_state;

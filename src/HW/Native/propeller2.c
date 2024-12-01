@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include "smartpins.h"
 #include "SocketIO.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #define TIME_SCALING_FACTOR 1
 #define CLOCK_FREQ 180000000

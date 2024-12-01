@@ -8,7 +8,7 @@
 
 #include "lib_utility.h"
 #include "HAL_serial.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #include <propeller2.h>
 /**********************************************************************

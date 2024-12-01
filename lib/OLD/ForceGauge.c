@@ -2,7 +2,7 @@
 #include <math.h>
 #include <propeller2.h>
 #include <smartpins.h>
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #define CONFIG_0 0x00 // Configuration register 0
 #define CONFIG_1 0x01 // Configuration register 1

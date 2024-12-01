@@ -1,6 +1,6 @@
 #include "JsonEncoder.h"
 #include "JSON.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include <propeller2.h>
 
 static const char notification_to_str[APP_NOTIFICATION_TYPE_COUNT][20] = {

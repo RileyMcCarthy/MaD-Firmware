@@ -5,7 +5,7 @@
 #include "app_motion.h"
 #include "app_notification.h"
 #include "ControlSystem.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "dev_nvram.h"
 #include "watchdog.h"
 #include "dev_cogManager.h"

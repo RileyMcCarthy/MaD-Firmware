@@ -20,10 +20,8 @@ To build the firmware open the MaD-Firmware folder to compile and upload!
 ## Abstraction Layers
 
 ### HW
-The hardware layer defines the PCBA board layout including:
-1. Pin Definitions
-2. Clock Frequency
-3. Board layout
+The hardware layer defines PCBA layout, micrcontroller specific tools and functions.
+1. Most hardware specific code for this project is included in propeller2.h.
 
 ### HAL
 The hardware abstraction layer is used to generalize the software from the hardware. Only this layer is alowed to call HW functions inside propeller2.h and write to registers.
@@ -33,15 +31,22 @@ The hardware abstraction layer is used to generalize the software from the hardw
 4. I2C
 
 ### IO
-The input/output layer is used to define tools used to interact with HAL or define protocols of communcation.
-1. CRC
-2. protocol
-3. Static Queue
-4. Timer
+The input/output layer is used to define tools used to interact with HAL, define protocols of communcation, and drivers. 
+1. ADS122U04
+2. Serial Protocol
+3. JSON? -> this should be library
 
 ### DEV
 The device layer can combine the HAL + IO layer to develop drivers for devices.
 1. Stepper motor
 2. COG Manager (should be replaced by RTOS eventually)
-3. Logger
+3. Logging
 4. NVRAM (only implements SD card nvram)
+5. Navkey (need to update driver to be more stable)
+6. Watchdog (is this dev?)
+
+### Library
+Librarys should be completely seperate from any project dependencies
+1. Static Queue
+2. Timers
+3. Utility

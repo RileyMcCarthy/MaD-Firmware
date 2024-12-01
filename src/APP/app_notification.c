@@ -11,7 +11,7 @@
 #include "IO_protocol.h"
 #include "lib_staticQueue.h"
 #include "JsonEncoder.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/

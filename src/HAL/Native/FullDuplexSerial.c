@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <propeller2.h>
 #include <stdio.h>
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #define SERIAL_MEMORY_SIZE 1024
 

@@ -6,7 +6,7 @@
 #include "StateMachine.h"
 #include "JsonEncoder.h"
 #include "JsonDecoder.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "app_motion.h"
 #include "app_monitor.h"
 #include "lib_staticQueue.h"

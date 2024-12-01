@@ -4,7 +4,7 @@
 #include <string.h>
 #include "Monitor.h"
 #include "StateMachine.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "Motion.h"
 #include "ForceGauge/ForceGauge.h"
 #include "Encoder.h"

@@ -10,16 +10,17 @@
  **********************************************************************/
 #include "dev_cogManager_config.h"
 #include "dev_cogManager.h"
+#include "lib_utility.h"
 #include "watchdog.h"
 #include <stdint.h>
 /**********************************************************************
  * Constants
  **********************************************************************/
-#define DEV_COGMANAGER_STACK_CANARY_SIZE 100
+#define DEV_COGMANAGER_STACK_CANARY_SIZE (100U)
 /*********************************************************************
  * Macros
  **********************************************************************/
-#define _countof(_Array) (sizeof(_Array) / sizeof(_Array[0]))
+
 /**********************************************************************
  * Typedefs
  **********************************************************************/
@@ -51,19 +52,19 @@ typedef struct
 #define DEV_COGMANAGER_CHANNEL_CREATE_RUN(channel) \
     void dev_cogManager_taskRun##channel(void *arg)
 
-#define DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(channel) \
-    {                                                 \
-        dev_cogManager_taskInit##channel,             \
-        dev_cogManager_taskRun##channel,              \
-        dev_cogManager_stack##channel,                \
-        _countof(dev_cogManager_stack##channel),      \
-        dev_cogManager_lowerCanary##channel,          \
-        dev_cogManager_upperCanary##channel,          \
+#define DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(channel)           \
+    {                                                           \
+        dev_cogManager_taskInit##channel,                       \
+        dev_cogManager_taskRun##channel,                        \
+        dev_cogManager_stack##channel,                          \
+        LIB_UTILITY_ARRAY_COUNT(dev_cogManager_stack##channel), \
+        dev_cogManager_lowerCanary##channel,                    \
+        dev_cogManager_upperCanary##channel,                    \
     }
 
 typedef struct
 {
-    dev_cogManager_channelConfig_S channels[DEV_COGMANAGER_CHANNEL_COUNT];
+    const dev_cogManager_channelConfig_S channels[DEV_COGMANAGER_CHANNEL_COUNT];
 } dev_cogManager_config_S;
 
 /**********************************************************************

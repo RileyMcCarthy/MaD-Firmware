@@ -8,7 +8,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "lib_staticQueue.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 static char socket_ip[64] = "127.0.0.1";
 static int socket_port_base = 9500;

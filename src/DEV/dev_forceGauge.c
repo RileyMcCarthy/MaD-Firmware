@@ -6,7 +6,7 @@
  **********************************************************************/
 #include "dev_forceGauge.h"
 #include "dev_nvram.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -17,7 +17,8 @@
 #define DEV_FORCEGAUGE_LOCK_REQ() _locktry(dev_forceGauge_data.lock)
 #define DEV_FORCEGAUGE_REQ_BLOCK()             \
     while (DEV_FORCEGAUGE_LOCK_REQ() == false) \
-        ;
+    {                                          \
+    }
 #define DEV_FORCEGAUGE_LOCK_REL() _lockrel(dev_forceGauge_data.lock)
 /**********************************************************************
  * Typedefs

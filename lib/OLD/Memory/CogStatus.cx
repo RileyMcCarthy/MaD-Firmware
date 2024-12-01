@@ -1,5 +1,5 @@
 #include "Memory/CogStatus.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include <propeller2.h>
 
 #define COG_STATUS_TIMOUT 100

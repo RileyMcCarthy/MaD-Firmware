@@ -7,7 +7,7 @@
 #include <propeller2.h>
 #include <stdlib.h>
 #include "dev_cogManager.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "lib_utility.h"
 
 #include <string.h>
@@ -53,7 +53,7 @@ typedef struct
 /**********************************************************************
  * External Variables
  **********************************************************************/
-extern dev_cogManager_config_S dev_cogManager_config;
+extern const dev_cogManager_config_S dev_cogManager_config;
 /**********************************************************************
  * Private Variable Definitions
  **********************************************************************/

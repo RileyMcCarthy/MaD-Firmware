@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "lib_staticQueue.h"
 #include <propeller2.h>
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "dev_nvram.h"
 #include <smartpins.h>
 #include <math.h>

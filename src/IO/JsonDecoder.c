@@ -2,7 +2,7 @@
 #include "JSON.h"
 #include "StateMachine.h"
 #include "ControlSystem.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 /** Private JSON to Structure **/
 

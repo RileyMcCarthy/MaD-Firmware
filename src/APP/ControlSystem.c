@@ -3,7 +3,7 @@
 #include "app_monitor.h"
 #include "app_motion.h"
 #include "app_notification.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 #include "MotionPlanning.h"
 #include "ForceGauge.h"
 #include <propeller2.h>

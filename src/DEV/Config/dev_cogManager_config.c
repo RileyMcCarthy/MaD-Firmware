@@ -21,7 +21,7 @@
 #include "IO_protocol.h"
 
 #include "watchdog.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -130,7 +130,7 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(FORCEGAUGE)
     }
 }
 
-dev_cogManager_config_S dev_cogManager_config = {
+const dev_cogManager_config_S dev_cogManager_config = {
     {
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MONITOR),
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MOTOR),

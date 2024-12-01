@@ -6,7 +6,7 @@
  **********************************************************************/
 #include "propeller2.h"
 #include <string.h>
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #include "dev_logger.h"
 #include "lib_staticQueue.h"

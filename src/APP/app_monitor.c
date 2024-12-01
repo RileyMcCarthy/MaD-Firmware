@@ -88,7 +88,7 @@ Definitions
 
 #include "ForceGauge.h"
 #include "Encoder.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 
 #include "lib_utility.h"
 /**********************************************************************

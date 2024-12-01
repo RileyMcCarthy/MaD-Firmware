@@ -20,7 +20,8 @@ extern int _stdio_debug_lock;
 
 #define DEBUG_PRINTF_RAW(color, fmt, ...)                                                                                  \
     while (!_locktry(_stdio_debug_lock))                                                                                   \
-        ;                                                                                                                  \
+    {                                                                                                                      \
+    }                                                                                                                      \
     fprintf(stdout, color "%0.3f - %s:%d: " fmt ANSI_COLOR_RESET, _getus() / 1000000.0f, __FILE__, __LINE__, __VA_ARGS__); \
     _lockrel(_stdio_debug_lock);
 

@@ -9,7 +9,7 @@
 #include <string.h>
 #include "propeller2.h"
 #include "dev_nvram.h"
-#include "Debug.h"
+#include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
