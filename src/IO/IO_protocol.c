@@ -69,7 +69,7 @@ IO_protocol_data_S IO_protocol_data;
 
 static bool IO_protocol_private_timeout(void)
 {
-    return (_getms() - IO_PROTOCOL_RECIEVE_TIMEOUT_MS > IO_protocol_data.recieve.startms);
+    return ((_getms() - IO_PROTOCOL_RECIEVE_TIMEOUT_MS) > IO_protocol_data.recieve.startms);
 }
 
 static bool IO_protocol_private_recieveByte(uint8_t *byte)

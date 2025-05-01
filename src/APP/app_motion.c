@@ -44,9 +44,7 @@
 /**********************************************************************
  * Typedefs
  **********************************************************************/
-typedef struct
-{
-} app_motion_request_S;
+
 typedef struct
 {
     bool motionEnabled;
@@ -64,7 +62,6 @@ typedef struct
 
 typedef struct
 {
-    app_motion_request_S request;
     app_motion_dataInputs_t inputs;
     lib_staticQueue_S testQueue;
     lib_staticQueue_S manualQueue;
@@ -93,7 +90,6 @@ static app_motion_data_t app_motion_data;
  * Private Function Prototypes
  **********************************************************************/
 
-static void app_motion_private_processRequests(void);
 static void app_motion_private_processInputs();
 static void app_motion_private_processOutputs();
 static app_motion_state_E app_motion_private_getDesiredState();
@@ -104,12 +100,6 @@ static bool app_motion_private_hasValidMove(void);
 /**********************************************************************
  * Private Functions
  **********************************************************************/
-
-static void app_motion_private_processRequests(void)
-{
-    APP_MOTION_LOCK_REQ_BLOCK();
-    APP_MOTION_LOCK_REL();
-}
 
 static void app_motion_private_processInputs()
 {
@@ -329,7 +319,6 @@ void app_motion_init(int lock)
 
 void app_motion_run()
 {
-    app_motion_private_processRequests();
     app_motion_private_processInputs();
     app_motion_data.state = app_motion_private_getDesiredState();
     app_motion_private_processOutputs();
