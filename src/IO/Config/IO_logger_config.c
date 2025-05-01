@@ -29,9 +29,9 @@ IO_LOGGER_CHANNEL_DATA_DEFINE(SAMPLE_DATA, IO_logger_testSample_S, 64, "a+", SD_
 {
     bool result = false;
     IO_logger_testSample_S sample;
-    if (lib_staticQueue_pop(queue, &sample))
+    while (lib_staticQueue_pop(queue, &sample))
     {
-        fprintf(file, "%d,%d,%d,%d\n", sample.time, sample.index, sample.force, sample.position);
+        fprintf(file, "%u,%u,%d,%d\n", sample.time, sample.index, sample.force, sample.position);
         result = true;
     }
     return result;

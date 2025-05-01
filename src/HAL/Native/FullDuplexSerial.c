@@ -16,7 +16,7 @@ static void fds_thread(void *arg)
         if (socketio_receive(self->socket_id, &rxbyte, 1) == 1)
         {
             lib_staticQueue_push(&(self->rx_queue), &rxbyte);
-            // printf("Received byte: %d\n", rxbyte);
+            //    printf("Received byte: %d\n", rxbyte);
         }
         if (lib_staticQueue_isempty(&(self->tx_queue)) == false)
         {

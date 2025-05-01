@@ -19,15 +19,6 @@ typedef enum
     DEV_NVRAM_ERROR,
 } dev_nvram_state_t;
 
-typedef enum
-{
-    DEV_NVRAM_CHANNEL_MEMORY_WRITE,     // internal
-    DEV_NVRAM_CHANNEL_MEMORY_READ,      // internal
-    DEV_NVRAM_CHANNEL_MEMORY_WRITE_REQ, // request
-    DEV_NVRAM_CHANNEL_MEMORY_READ_OUT,  // output
-    DEV_NVRAM_CHANNEL_MEMORY_COUNT,
-} dev_nvram_channel_memory_t;
-
 typedef struct
 {
     void *data;
@@ -60,7 +51,7 @@ typedef struct
 } dev_nvram_config_t;
 
 void dev_nvram_init(int lock);
-void dev_nvram_run();
+void dev_nvram_run(void);
 
 // Requests
 bool dev_nvram_updateChannelData(dev_nvram_channel_t channel, void *data, size_t size);
@@ -70,6 +61,6 @@ bool dev_nvram_getChannelData(dev_nvram_channel_t channel, void *data, size_t si
 
 // non thread-safe functions
 dev_nvram_state_t dev_nvram_getState(dev_nvram_channel_t channel);
-bool dev_nvram_nosync_runUntilReady();
+bool dev_nvram_nosync_runUntilReady(void);
 
 #endif // WATCHDOG_H

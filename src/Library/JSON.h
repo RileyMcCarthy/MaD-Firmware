@@ -9,6 +9,7 @@
 bool json_property_to_string(const json_t *parser, const char *name, char *value, size_t length);
 bool json_property_to_string_ref(const json_t *parser, const char *name, const char **value);
 bool json_property_to_int(const json_t *parser, const char *name, int *value);
+bool json_property_to_uint32(const json_t *parser, const char *name, uint32_t *value);
 bool json_property_to_bool(const json_t *parser, const char *name, bool *value);
 bool json_property_to_double(const json_t *json, const char *name, double *value);
 int json_property_to_double_array(double *array, const json_t *json, const char *name);

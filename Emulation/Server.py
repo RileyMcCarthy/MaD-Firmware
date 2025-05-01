@@ -3,7 +3,7 @@ from time import sleep
 
 # The base port should be sent to firmware cause it sometimes has conflicts with existing ports
 # MAYBE ONCE STABLE RUN IN DOCKER
-socket_port_base = 9500
+socket_port_base = 9600
 
 # Build firmware
 firmware = MaDSim.FirmwareRunner("native", "../")
@@ -70,11 +70,12 @@ servo_enc_a = MaDSim.GPIO()
 MaDSim.AsyncConnector(servo_enc_a, async_server[9])
 servo_enc_b = MaDSim.GPIO()
 MaDSim.AsyncConnector(servo_enc_b, async_server[10])
-servo = MaDSim.Servo(servo_step, servo_dir, servo_enc_a, servo_enc_b)
+servo = MaDSim.Servo(servo_step, servo_dir, servo_enc_a, servo_enc_b, endstop_upper)
 
 forceGauge = MaDSim.SimulatedADS122U04()
 MaDSim.AsyncConectorSingle(forceGauge, async_server[0])
 MaDSim.AsyncConectorSingle(async_server[2], forceGauge)
+sample = MaDSim.TestSample(servo, forceGauge)
 
 # socat -d -d pty,raw,echo=0,link=/tmp/tty.rpi_client pty,raw,echo=0,link=/tmp/tty.rpi
 rpi_pin = 53
@@ -117,6 +118,7 @@ try:
             if not async_server_instance.is_running():
                 MaDSim.logger.error("Async server has stopped, Exiting server process")
                 break
+        sample.apply_force()
         sleep(0.1)
 finally:
     firmware.stop()

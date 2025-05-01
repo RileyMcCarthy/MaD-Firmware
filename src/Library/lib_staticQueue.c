@@ -31,6 +31,7 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
     {
         printf("lib_staticQueue_push: data is FULL\n");
         _lockrel(queue->lock);
+        exit(1);
         return false;
     }
 
@@ -76,7 +77,7 @@ bool lib_staticQueue_isempty(lib_staticQueue_S *queue)
 
 bool lib_staticQueue_isfull(lib_staticQueue_S *queue)
 {
-    return queue->rear == queue->front - 1 || (queue->front == 0 && queue->rear == queue->max_size - 1);
+    return ((queue->rear + 1) % queue->max_size) == queue->front;
 }
 
 void lib_staticQueue_empty(lib_staticQueue_S *queue)

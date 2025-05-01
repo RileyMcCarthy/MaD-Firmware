@@ -10,13 +10,15 @@
 #include "dev_cogManager.h"
 #include "app_monitor.h"
 #include "app_motion.h"
+#include "app_control.h"
 #include "app_notification.h"
 #include "app_messageSlave.h"
 
 #include "IO_logger.h"
 #include "dev_stepper.h"
 #include "dev_forceGauge.h"
-#include "ControlSystem.h"
+#include "IO_positionFeedback.h"
+#include "dev_nvram.h"
 
 #include "IO_protocol.h"
 
@@ -33,10 +35,13 @@
 /**********************************************************************
  * Typedefs
  **********************************************************************/
-// technically cog0 (wardware cog) is not a channel with stack. It is a special case. should not be handled by the cogManager
+
 DEV_COGMANAGER_CHANNEL_CREATE_INIT(MONITOR, 1024U)
 {
     DEBUG_INFO("%s", "Monitor cog init\n");
+    MachineProfile machineProfile;
+    dev_nvram_getChannelData(DEV_NVRAM_CHANNEL_MACHINE_PROFILE, &machineProfile, sizeof(MachineProfile));
+    IO_positionFeedback_init(IO_POSITION_FEEDBACK_CHANNEL_SERVO_FEEDBACK, lock, machineProfile.encoderStepsPerMM);
     app_monitor_init(lock);
 }
 
@@ -90,12 +95,17 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(COMMUNICATION)
 DEV_COGMANAGER_CHANNEL_CREATE_INIT(CONTROL, 1024)
 {
     DEBUG_INFO("%s", "Control cog initializing\n");
+    app_control_init(lock);
 }
 
 DEV_COGMANAGER_CHANNEL_CREATE_RUN(CONTROL)
 {
     DEBUG_INFO("%s", "Control cog running\n");
-    control_cog_run();
+    while (1)
+    {
+        app_control_run();
+        watchdog_kick(WATCHDOG_CHANNEL_CONTROL);
+    }
 }
 
 DEV_COGMANAGER_CHANNEL_CREATE_INIT(LOGGER, 1024)

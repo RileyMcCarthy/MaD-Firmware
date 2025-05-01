@@ -24,6 +24,20 @@
  * Typedefs
  **********************************************************************/
 
+typedef enum
+{
+    DEV_FORCEGAUGE_STATE_INIT,
+    DEV_FORCEGAUGE_STATE_RUNNING,
+    DEV_FORCEGAUGE_STATE_ERROR,
+    DEV_FORCEGAUGE_STATE_COUNT,
+} dev_forceGauge_state_E;
+
+typedef struct
+{
+    int32_t zeroForceCount; // adc at zero force
+    int32_t countPerForce;  // adc count per force
+} dev_forceGauge_channelNVRAM_S;
+
 typedef struct
 {
     uint32_t rawADC; // should really be voltage
@@ -170,8 +184,8 @@ void dev_forceGauge_init(int lock)
     for (dev_forceGauge_channel_E channel = (dev_forceGauge_channel_E)0U; channel < DEV_FORCEGAUGE_CHANNEL_COUNT; channel++)
     {
         dev_forceGauge_data.channel[channel].state = DEV_FORCEGAUGE_STATE_INIT;
-        dev_forceGauge_data.channel[channel].nvram.zeroForceCount = machineProfile.configuration.forceGaugeOffset; // @todo make this voltage :)
-        dev_forceGauge_data.channel[channel].nvram.countPerForce = machineProfile.configuration.forceGaugeGain;
+        dev_forceGauge_data.channel[channel].nvram.zeroForceCount = machineProfile.forceGaugeZeroOffset; // @todo make this voltage :)
+        dev_forceGauge_data.channel[channel].nvram.countPerForce = machineProfile.forceGaugeNPerStep;
     }
     dev_forceGauge_data.lock = lock;
 }

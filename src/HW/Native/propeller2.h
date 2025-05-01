@@ -55,7 +55,8 @@ extern volatile uint32_t _INB;
 
 // cartesian coordinates
 typedef struct _cartesian {
-   int32_t x, y;
+   int32_t x;
+   int32_t y;
 } cartesian_t;
 
 // polar coordinates
@@ -102,7 +103,7 @@ void	  _reboot(void);
 int       _coginit(int cog, void *pgm, void *ptr);
 #define _cognew(pgm, ptr) _coginit(ANY_COG, pgm, ptr)
 
-void init_simulator();
+void init_simulator(void);
 int32_t get_pin_socketid(int pin);
 
 /* start C code in another COG */
@@ -144,10 +145,10 @@ uint32_t  _isqrt(uint32_t val); /* Spin integer square root */
 /* counter related functions */
 uint32_t  _cnt(void);
 uint32_t  _cnth(void); /* high 32 bits of CNT, on processors that support it */
-counter64_t _cnthl();  /* fetch both together */
-uint32_t  _getsec();   /* seconds elapsed */
-uint32_t  _getms();    /* get milliseconds elapsed */
-uint32_t  _getus();    /* get microseconds elapsed */
+counter64_t _cnthl(void); /* fetch both together */
+uint32_t _getsec(void);   /* seconds elapsed */
+uint32_t _getms(void);    /* get milliseconds elapsed */
+uint32_t _getus(void);    /* get microseconds elapsed */
 
 uint32_t  _pollcnt(uint32_t tick);
 void      _waitcnt(uint32_t tick);
@@ -187,6 +188,6 @@ uint32_t _clockmode(void);
 
 int mount(char *user_name, void *v);
 int umount(char *user_name);
-void * _vfs_open_sdcard();
+void *_vfs_open_sdcard(void);
 
 #endif

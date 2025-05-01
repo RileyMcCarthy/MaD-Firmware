@@ -70,6 +70,7 @@ bool HAL_serial_private_readAvailable(HAL_serial_channel_E channel)
     {
         dataAvailable = (_pinr(HAL_serial_channelConfig[channel].rx) != 0);
     }
+    return dataAvailable;
 }
 
 /**********************************************************************
@@ -111,7 +112,7 @@ void HAL_serial_transmitData(HAL_serial_channel_E channel, const uint8_t *const 
         // write the bytes to the smartpin
         for (uint8_t i = 0; i < len; i++)
         {
-            wypin(HAL_serial_channelConfig[channel].tx, &data[i]);
+            _wypin(HAL_serial_channelConfig[channel].tx, &data[i]);
 
             // wait for the byte to be sent
             HAL_serial_private_TXFlush(channel);

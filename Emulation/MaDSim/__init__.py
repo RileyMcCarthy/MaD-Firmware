@@ -29,3 +29,4 @@ from MaDSim.ForceGauge import SimulatedADS122U04
 from MaDSim.AsyncSerial import AsyncSerialServer
 from MaDSim.Servo import Servo, ServoStep, ServoDirection
 from MaDSim.GPIO import GPIO
+from MaDSim.TestSample import TestSample

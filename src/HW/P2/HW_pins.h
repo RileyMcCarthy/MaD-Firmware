@@ -1,3 +1,5 @@
+#ifndef HW_PINS_H
+#define HW_PINS_H
 typedef enum
 {
     HW_PIN_FORCE_GAUGE_RX = 0,
@@ -25,4 +27,8 @@ typedef enum
     HW_PIN_ENDSTOP_DOOR = 21,
     HW_PIN_ESD_POWER = 22,
     HW_PIN_CHARGE_PUMP = 28,
+
+    HW_PIN_RPI_RX = 53,
+    HW_PIN_RPI_TX = 55,
 } HW_pin_E;
+#endif /* HW_PINS_H */

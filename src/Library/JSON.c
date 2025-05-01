@@ -59,6 +59,19 @@ bool json_property_to_int(const json_t *parser, const char *name, int *value)
     return true;
 }
 
+bool json_property_to_uint32(const json_t *parser, const char *name, uint32_t *value)
+{
+    const json_t *property = json_getProperty(parser, name);
+    if (!property || JSON_INTEGER != json_getType(property))
+    {
+        return false;
+    }
+    
+    uint32_t temp = (uint32_t)json_getInteger(property);
+    memcpy(value, &temp, sizeof(uint32_t));
+    return true;
+}
+
 bool json_property_to_bool(const json_t *parser, const char *name, bool *value)
 {
     const json_t *property = json_getProperty(parser, name);

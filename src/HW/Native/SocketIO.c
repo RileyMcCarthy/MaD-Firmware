@@ -11,12 +11,18 @@
 #include "IO_Debug.h"
 
 static char socket_ip[64] = "127.0.0.1";
-static int socket_port_base = 9500;
+static int socket_port_base = 9600;
 
 void socketio_send_str(int32_t socket_id, char *data)
 {
     // Send data to the server
     send(socket_id, data, strlen(data), 0);
+}
+
+void socketio_send_data(int32_t socket_id, uint8_t *data, uint16_t length)
+{
+    // Send data to the server
+    send(socket_id, data, length, 0);
 }
 
 void socketio_send(int32_t socket_id, uint8_t data)

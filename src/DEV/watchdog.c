@@ -14,7 +14,7 @@
  * Constants
  **********************************************************************/
 #define TIMEOUT_WARNING 100U // Timeout for each channel
-#define TIMEOUT_ERROR 1000U  // Timeout for each channel
+#define TIMEOUT_ERROR 2000U  // Timeout for each channel
 /*********************************************************************
  * Macros
  **********************************************************************/

@@ -4,7 +4,6 @@
 #include "JSON.h"
 #include "app_motion.h"
 #include "app_notification.h"
-#include "ControlSystem.h"
 #include "IO_Debug.h"
 #include "dev_nvram.h"
 #include "watchdog.h"
@@ -49,22 +48,18 @@ void mad_begin()
     _waitms(1000);
     _reboot();
   }
+
   mad_startupNVRAM(criticalLock); // start the non-volatile memory system
 
   watchdog_init(criticalLock);
-  machine_state_init();
   dev_cogManager_init(criticalLock);
 
-  state_machine_set(PARAM_SELF_CHARGE_PUMP, true);
   app_notification_send(APP_NOTIFICATION_TYPE_SUCCESS, "Device is alive!\n");
 
-  // should replace with a cog manager, for watchdog, locks etc.
   while (true)
   {
     dev_nvram_run();
     dev_cogManager_run();
-
-    watchdog_kick(WATCHDOG_CHANNEL_MONITOR);
     watchdog_run();
   }
 }

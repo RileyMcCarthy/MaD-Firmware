@@ -40,7 +40,6 @@ typedef struct
     int lockid;
     uint8_t crcLower;
     uint8_t crcUpper;
-    dev_cogManager_channelOutput_S stagedOutput;
     dev_cogManager_channelOutput_S output;
 } dev_cogManager_channelData_S;
 
@@ -62,10 +61,10 @@ static dev_cogManager_data_S dev_cogManager_data;
  * Private Function Prototypes
  **********************************************************************/
 
-void dev_cogManager_private_stageOutput(watchdog_channel_t channel)
+void dev_cogManager_private_stageOutput(dev_cogManager_channel_E channel)
 {
     APP_COGMANAGER_LOCK_REQ_BLOCK();
-    memcpy(&dev_cogManager_data.channels[channel].output, &dev_cogManager_data.channels[channel].stagedOutput, sizeof(dev_cogManager_channelOutput_S));
+    dev_cogManager_data.channels[channel].output.running = dev_cogManager_data.channels[channel].state == DEV_COGMANAGER_STATE_RUNNING;
     APP_COGMANAGER_LOCK_REL();
 }
 
@@ -169,12 +168,12 @@ void dev_cogManager_runAction(dev_cogManager_channel_E channel)
         if (crcLower != dev_cogManager_data.channels[channel].crcLower)
         {
             DEBUG_ERROR("Stack overflow detected on channel %d\n", channel);
-            // dev_cogManager_data.channels[channel].state = DEV_COGMANAGER_STATE_ERROR;
+            dev_cogManager_data.channels[channel].state = DEV_COGMANAGER_STATE_ERROR;
         }
         else if (crcUpper != dev_cogManager_data.channels[channel].crcUpper)
         {
             DEBUG_ERROR("Stack underflow detected on channel %d\n", channel);
-            // dev_cogManager_data.channels[channel].state = DEV_COGMANAGER_STATE_ERROR;
+            dev_cogManager_data.channels[channel].state = DEV_COGMANAGER_STATE_ERROR;
         }
         else
         {
@@ -216,6 +215,7 @@ void dev_cogManager_run(void)
             dev_cogManager_entryAction(channel);
         }
         dev_cogManager_runAction(channel);
+        dev_cogManager_private_stageOutput(channel);
     }
 }
 

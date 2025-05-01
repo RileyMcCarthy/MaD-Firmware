@@ -23,17 +23,17 @@ int32_t encoder_value(Encoder *self)
         {
             if (socketio_receive(self->socket_a, &recv_a, 1) == 1)
             {
-                value += recv_a;
+                self->value += recv_a;
             }
 
             if (socketio_receive(self->socket_b, &recv_b, 1) == 1)
             {
-                value -= recv_b;
+                self->value -= recv_b;
             }
         }
+        value = self->value;
     }
-    self->value += value;
-    return self->value;
+    return value;
 }
 void encoder_set(Encoder *self, int32_t value)
 {

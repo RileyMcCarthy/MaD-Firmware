@@ -10,7 +10,6 @@
 #include "app_notification.h"
 #include "IO_protocol.h"
 #include "lib_staticQueue.h"
-#include "JsonEncoder.h"
 #include "IO_Debug.h"
 /**********************************************************************
  * Constants
@@ -148,10 +147,7 @@ void app_notification_runAction()
                  app_notification_data.currentNotification.message);
         if (strncmp(app_notification_data.notificationJSON, "", APP_NOTIFICATION_MAX_JSON_SIZE) != 0)
         {
-            if (IO_protocol_send(IO_PROTOCOL_COMMAND_NOTIFICATION, (uint8_t *)app_notification_data.notificationJSON, strlen(app_notification_data.notificationJSON)))
-            {
-                app_notification_data.sendComplete = true;
-            }
+            app_notification_data.sendComplete = IO_protocol_sendNotification((uint8_t *)app_notification_data.notificationJSON, strlen(app_notification_data.notificationJSON));
         }
         break;
     default:
@@ -173,6 +169,14 @@ void app_notification_init(int lock)
 void app_notification_run()
 {
     app_notification_stageRequest();
+    app_notification_message_S notification;
+    if (lib_staticQueue_pop(&app_notification_data.notificationQueue, &notification))
+    {
+        snprintf(app_notification_data.notificationJSON, APP_NOTIFICATION_MAX_JSON_SIZE,
+                 "{\"Type\":\"%s\",\"Message\":\"%s\"}",
+                 app_notification_private_typeToString[app_notification_data.currentNotification.type],
+                 app_notification_data.currentNotification.message);
+    }
     app_notification_state_E desiredState = app_notification_getDesiredState();
     if (app_notification_data.state != desiredState)
     {

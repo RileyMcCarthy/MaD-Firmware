@@ -22,14 +22,6 @@
  * Typedefs
  **********************************************************************/
 
-typedef enum
-{
-    APP_MONITOR_INIT,
-    APP_MONITOR_READY,
-    APP_MONITOR_LOGGING,
-    APP_MONITOR_COUNT,
-} app_monitor_state_t;
-
 typedef struct
 {
     int32_t force;    // mN
@@ -55,12 +47,18 @@ void app_monitor_init(int lock);
 void app_monitor_run(void);
 
 void app_monitor_getSample(app_monitor_sample_t *sample);
-int32_t app_monitor_getForce(void);
-int32_t app_monitor_getPosition(void);
+int32_t app_monitor_getSampleForce(void);
+int32_t app_monitor_getSamplePosition(void);
 
-void app_monitor_setGaugeLength(void);
-void app_monitor_setGaugeForce(void);
+int32_t app_monitor_getAbsoluteForce(void);    // force gauge feedback
+int32_t app_monitor_getAbsolutePosition(void); // position relative to upper endstop
 
+int32_t app_monitor_getGaugeLength(void);
+
+void app_monitor_zeroGaugeLength(void);
+void app_monitor_zeroGaugeForce(void);
+void app_monitor_zeroPosition(void);
+void app_monitor_setTestName(const char *testName);
 /**********************************************************************
  * End of File
  **********************************************************************/

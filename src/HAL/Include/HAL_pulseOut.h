@@ -1,17 +1,19 @@
-#ifndef MID_JSON_CONFIG_H
-#define MID_JSON_CONFIG_H
+#ifndef HAL_PULSE_OUT_H
+#define HAL_PULSE_OUT_H
 //
 // Created by Riley McCarthy on 25/04/24.
+// @brief Non threadsafe implementation of hardware PWM out
 //
 /**********************************************************************
  * Includes
  **********************************************************************/
-#include "mid_json.h"
+#include "HW_pins.h"
+#include <stdbool.h>
+#include <stdint.h>
 /**********************************************************************
  * Constants
  **********************************************************************/
-#define MID_JSON_NOTIFICATINO_TYPE_SIZE 10
-#define MID_JSON_NOTIFICATINO_MESSAGE_SIZE 100
+
 /*********************************************************************
  * Macros
  **********************************************************************/
@@ -21,22 +23,17 @@
  **********************************************************************/
 typedef enum
 {
-    MID_JSON_CHANNEL_NOTIFICATION,
-    MID_JSON_CHANNEL_COUNT,
-} mid_json_channel_E;
-
-// shoould recreate all structs for json here.
-// this will allow for ex sample struct to be different from what is used in monitor
-typedef struct
-{
-    char type[MID_JSON_NOTIFICATINO_TYPE_SIZE];
-    char message[MID_JSON_NOTIFICATINO_MESSAGE_SIZE];
-} mid_json_notification_S;
+    HAL_PULSE_OUT_CHANNEL_SERVO,
+    HAL_PULSE_OUT_CHANNEL_COUNT,
+} HAL_pulseOut_channel_E;
 /**********************************************************************
  * Public Function Definitions
  **********************************************************************/
 
+void HAL_pulseOut_start(HAL_pulseOut_channel_E channel, uint32_t pulses, uint32_t frequency);
+bool HAL_pulseOut_run(HAL_pulseOut_channel_E channel, uint32_t *pulses);
+void HAL_pulseOut_stop(HAL_pulseOut_channel_E channel);
 /**********************************************************************
  * End of File
  **********************************************************************/
-#endif /* MID_JSON_CONFIG_H */
+#endif /* HAL_PULSE_OUT_H */

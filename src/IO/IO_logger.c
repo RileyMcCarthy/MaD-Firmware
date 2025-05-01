@@ -277,9 +277,16 @@ bool IO_logger_reopen(IO_logger_channel_E channel)
     if (channel < IO_LOGGER_CHANNEL_COUNT)
     {
         IO_LOGGER_LOCK_REQ_BLOCK();
-        IO_LOGGER_LOCKED_REQUEST(channel).enable = true;
-        DEBUG_INFO("IO_LOGGER: Reopening channel %d with file %s\n", channel, IO_LOGGER_LOCKED_INPUT(channel).fileName);
-        success = true;
+        if (strncmp(IO_LOGGER_LOCKED_INPUT(channel).fileName, "", sizeof(IO_LOGGER_LOCKED_INPUT(channel).fileName)) != 0)
+        {
+            IO_LOGGER_LOCKED_REQUEST(channel).enable = true;
+            DEBUG_INFO("IO_LOGGER: Reopening channel %d with file %s\n", channel, IO_LOGGER_LOCKED_INPUT(channel).fileName);
+            success = true;
+        }
+        else
+        {
+            DEBUG_ERROR("IO_LOGGER: Failed to reopen channel %d, file is not set\n", channel);
+        }
         IO_LOGGER_LOCK_REL();
     }
     return success;
@@ -290,8 +297,7 @@ bool IO_logger_addComment(IO_logger_channel_E channel, const char *comment, uint
     bool success = false;
     if (channel < IO_LOGGER_CHANNEL_COUNT)
     {
-        if ((IO_logger_data.channelData[channel].writeComment == false) &&
-            (size < IO_LOGGER_COMMENT_SIZE))
+        if ((IO_logger_data.channelData[channel].writeComment == false) && (size < IO_LOGGER_COMMENT_SIZE))
         {
             IO_LOGGER_LOCK_REQ_BLOCK();
             IO_LOGGER_LOCKED_REQUEST(channel).writeComment = true;

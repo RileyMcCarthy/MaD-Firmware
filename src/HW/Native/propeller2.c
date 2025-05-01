@@ -40,12 +40,26 @@ int32_t get_pin_socketid(int pin)
 // New thread function to increment the microseconds counter
 static void *incrementMicroseconds(void *arg)
 {
-    uint32_t incrementValue = 10000; // Increment by 1 microseconds (adjust as needed)
+    struct timespec start, current;
+    uint64_t elapsedMicroseconds;
+
+    // Get the starting time
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     while (1)
     {
-        __microseconds += incrementValue;
-        usleep(incrementValue); // Sleep for the specified increment value
+        // Get the current time
+        clock_gettime(CLOCK_MONOTONIC, &current);
+
+        // Calculate the elapsed time in microseconds
+        elapsedMicroseconds = (current.tv_sec - start.tv_sec) * 1000000 +
+                              (current.tv_nsec - start.tv_nsec) / 1000;
+
+        // Update the microseconds counter
+        __microseconds = elapsedMicroseconds;
+
+        // Sleep for a short period to reduce CPU usage
+        usleep(1000); // Sleep for 1 millisecond
     }
 }
 
@@ -138,7 +152,7 @@ uint32_t _cnt()
 
 void _waitx(uint32_t cycles)
 {
-    usleep(cycles / (CLOCK_FREQ / 1000000)); // Sleep for the specified number of cycles
+    usleep((1000000 * cycles) / (CLOCK_FREQ)); // Sleep for the specified number of cycles
 }
 void _waitsec(uint32_t seconds)
 {
@@ -146,11 +160,7 @@ void _waitsec(uint32_t seconds)
 }
 void _waitms(uint32_t milliseconds)
 {
-    uint32_t current_time = _getms();
-    while (_getms() - current_time < milliseconds)
-    {
-        // Wait until the specified number of milliseconds has passed
-    }
+    usleep(milliseconds * 1000); // Sleep for the specified number of milliseconds
 }
 void _waitus(uint32_t microseconds)
 {
@@ -213,7 +223,7 @@ void _cogstop(int cog)
 
 void _pinw(int pin, int val)
 {
-    // @TODO implement
+    socketio_send(__gpio[pin].socket_id, val);
 }
 
 void _pinl(int pin)
@@ -255,7 +265,6 @@ int _pinr(int pin)
     }
     else
     {
-        bool data_available = false;
         if (socketio_poll(__gpio[pin].socket_id))
         {
             uint8_t buffer[1];
@@ -376,6 +385,7 @@ int mount(char *user_name, void *v)
 
     if (fptr != NULL)
     {
+        fclose(fptr); // Close the lock file
         return -1; // "sd card" already mounted, error
     }
 

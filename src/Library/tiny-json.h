@@ -94,7 +94,9 @@ static inline char const* json_getValue( json_t const* property ) {
   * @param json A valid handler of a json property.
   * @return The code of type.*/
 static inline jsonType_t json_getType( json_t const* json ) {
-    return json->type;
+  if (!json)
+    return JSON_NULL;
+  return json->type;
 }
 
 /** Get the next sibling of a JSON property that is within a JSON object or array.

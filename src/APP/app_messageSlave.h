@@ -22,20 +22,6 @@
  * Typedefs
  **********************************************************************/
 
-typedef enum
-{
-    APP_MESSAGE_SLAVE_STATE_INIT,
-    APP_MESSAGE_SLAVE_STATE_WAITING,         // wait for sync or interval
-    APP_MESSAGE_SLAVE_STATE_READING_COMMAND, // get read/write command
-    APP_MESSAGE_SLAVE_STATE_READING_HEADER,  // get length to read (do we always have length?)
-    APP_MESSAGE_SLAVE_STATE_READING_DATA,    // reading data of length
-    APP_MESSAGE_SLAVE_STATE_READING_CRC,     // check crc
-    APP_MESSAGE_SLAVE_STATE_READING_PROCESS, // decode the JSON data
-    APP_MESSAGE_SLAVE_STATE_RESPOND,         // Respond to command with data
-    APP_MESSAGE_SLAVE_STATE_AWK,             // Send AWK
-    APP_MESSAGE_SLAVE_STATE_COUNT,
-} app_message_slave_state_E;
-
 /**********************************************************************
  * Public Function Definitions
  **********************************************************************/

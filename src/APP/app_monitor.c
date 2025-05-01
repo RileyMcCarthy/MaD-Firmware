@@ -78,16 +78,12 @@ Definitions
 #include <string.h>
 #include "app_monitor.h"
 #include "app_motion.h"
+#include "app_control.h"
 
 #include "dev_nvram.h"
 #include "IO_logger.h"
 #include "dev_forceGauge.h"
-
-#include "StateMachine.h"
-#include "IO_digitalPin.h"
-
-#include "ForceGauge.h"
-#include "Encoder.h"
+#include "IO_positionFeedback.h"
 #include "IO_Debug.h"
 
 #include "lib_utility.h"
@@ -113,38 +109,43 @@ typedef struct
 {
     int32_t force;
     uint32_t forceIndex;
-    int32_t encoderRaw;
+    int32_t position; // um
     int32_t setpoint; // um
     uint32_t time;    // us
     bool testRunning;
+    bool updatedIndex;
 } app_monitor_inputData_t;
 
 typedef struct
 {
     bool setGaugeLength;
     bool setGaugeForce;
+    bool zeroPositionFeedback;
 } app_monitor_requestData_t;
 
 typedef struct
 {
     app_monitor_sample_t sample;
-    app_monitor_sample_t sampleOutput;
-} app_monitor_outputData_t;
+    int32_t force;
+    int32_t position;
+    int32_t gaugeLength;
+    int32_t gaugeForce;
+} app_monitor_output_S;
 
 typedef struct
 {
-    app_monitor_requestData_t stagedRequest; // thread safe
     app_monitor_requestData_t request;
     app_monitor_inputData_t input;
 
     int lock;
     uint32_t gaugeLength;
-    Encoder encoder; // @TODO dev_positionEncoder
-    MachineProfile machineProfile;
+    uint32_t gaugeForce;
+    uint32_t startTime;
     app_monitor_loggingState_E loggingState;
+    char testName[DEV_NVRAM_MAX_SAMPLE_PROFILE_NAME];
 
     app_monitor_sample_t sample;
-    app_monitor_sample_t sampleOutput;
+    app_monitor_output_S out;
 } app_monitor_data_t;
 
 /**********************************************************************
@@ -163,51 +164,55 @@ static app_monitor_data_t app_monitor_data;
 
 void app_monitor_private_processInputs()
 {
-    MachineState machineState;
-    get_machine_state(&machineState);
     app_monitor_data.input.force = dev_forceGauge_getForce(DEV_FORCEGAUGE_CHANNEL_MAIN);
-    app_monitor_data.input.forceIndex = dev_forceGauge_getIndex(DEV_FORCEGAUGE_CHANNEL_MAIN);
-
-    if (dev_forceGauge_isReady(DEV_FORCEGAUGE_CHANNEL_MAIN) == false)
-    {
-        state_machine_set(PARAM_MACHINE_FORCE_GAUGE_COM, 1);
-    }
-    app_monitor_data.input.encoderRaw = encoder_value(&app_monitor_data.encoder);
+    uint32_t newIndex = dev_forceGauge_getIndex(DEV_FORCEGAUGE_CHANNEL_MAIN);
+    app_monitor_data.input.updatedIndex = (newIndex != app_monitor_data.input.forceIndex);
+    app_monitor_data.input.forceIndex = newIndex;
+    app_monitor_data.input.position = IO_positionFeedback_getValue(IO_POSITION_FEEDBACK_CHANNEL_SERVO_FEEDBACK);
     app_monitor_data.input.setpoint = app_motion_getSetpoint();
     app_monitor_data.input.time = _getus();
-    app_monitor_data.input.testRunning = machineState.motionParameters.mode == MODE_TEST_RUNNING;
+    app_monitor_data.input.testRunning = app_control_testRunning();
 }
 
-void app_monitor_private_stageRequests()
+void app_monitor_private_processRequests()
 {
-    if (memcmp(&app_monitor_data.request, &app_monitor_data.stagedRequest, sizeof(app_monitor_requestData_t)) != 0)
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    if (app_monitor_data.request.setGaugeLength)
     {
-        APP_MONITOR_LOCK_REQ_BLOCK();
-        memcpy(&app_monitor_data.request, &app_monitor_data.stagedRequest, sizeof(app_monitor_requestData_t));
-        APP_MONITOR_LOCK_REL();
+        app_monitor_data.gaugeLength = app_monitor_data.input.position;
+        app_monitor_data.request.setGaugeLength = false;
     }
+    if (app_monitor_data.request.setGaugeForce)
+    {
+        app_monitor_data.gaugeForce = app_monitor_data.input.force;
+        app_monitor_data.request.setGaugeForce = false;
+    }
+    if (app_monitor_data.request.zeroPositionFeedback)
+    {
+        IO_positionFeedback_setValue(IO_POSITION_FEEDBACK_CHANNEL_SERVO_FEEDBACK, 0);
+        app_monitor_data.request.zeroPositionFeedback = false;
+    }
+    APP_MONITOR_LOCK_REL();
 }
 
 void app_monitor_private_processSample()
 {
-    const int32_t encoderStepsPermm = app_monitor_data.machineProfile.configuration.encoderStepsPermm;
-
-    app_monitor_data.sample.force = app_monitor_data.input.force;
-    int32_t absolutePosition = (app_monitor_data.input.encoderRaw * LIB_UTILITY_UM_PER_MM) / encoderStepsPermm;
-    app_monitor_data.sample.position = app_monitor_data.gaugeLength - absolutePosition;
-    app_monitor_data.sample.time = app_monitor_data.input.time;
+    app_monitor_data.sample.force = app_monitor_data.input.force - app_monitor_data.gaugeForce;
+    app_monitor_data.sample.position = app_monitor_data.input.position - app_monitor_data.gaugeLength;
+    app_monitor_data.sample.time = app_monitor_data.input.time - app_monitor_data.startTime;
     app_monitor_data.sample.index = app_monitor_data.input.forceIndex;
     app_monitor_data.sample.setpoint = app_monitor_data.input.setpoint;
 }
 
-void app_monitor_private_stageSample()
+void app_monitor_private_setOutput(void)
 {
-    if (memcmp(&app_monitor_data.sample, &app_monitor_data.sampleOutput, sizeof(app_monitor_sample_t)) != 0)
-    {
-        APP_MONITOR_LOCK_REQ_BLOCK();
-        memcpy(&app_monitor_data.sampleOutput, &app_monitor_data.sample, sizeof(app_monitor_sample_t));
-        APP_MONITOR_LOCK_REL();
-    }
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    app_monitor_data.out.gaugeForce = app_monitor_data.gaugeForce;
+    app_monitor_data.out.gaugeLength = app_monitor_data.gaugeLength;
+    app_monitor_data.out.force = app_monitor_data.input.force;
+    app_monitor_data.out.position = app_monitor_data.input.position;
+    memcpy(&app_monitor_data.out.sample, &app_monitor_data.sample, sizeof(app_monitor_sample_t));
+    APP_MONITOR_LOCK_REL();
 }
 
 void app_monitor_private_processLogging()
@@ -218,13 +223,14 @@ void app_monitor_private_processLogging()
     case APP_MONITOR_LOGGING_STATE_IDLE:
         if (app_monitor_data.input.testRunning)
         {
-            if (IO_logger_reopen(IO_LOGGER_CHANNEL_SAMPLE_DATA))
+            if (IO_logger_open(IO_LOGGER_CHANNEL_SAMPLE_DATA, app_monitor_data.testName))
             {
                 app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_RUNNING;
+                app_monitor_data.startTime = app_monitor_data.input.time;
             }
             else
             {
-                DEBUG_INFO("%s", "Failed to start logging due to sample data header not excisting\n");
+                DEBUG_INFO("%s", "Failed to start logging due to sample data header not existing\n");
             }
         }
         break;
@@ -233,14 +239,15 @@ void app_monitor_private_processLogging()
         {
             app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_STOPPING;
         }
-        else
+        else if (app_monitor_data.input.updatedIndex)
         {
+            //DEBUG_ERROR("%s", "Logging sample data\n");
             IO_logger_push(IO_LOGGER_CHANNEL_SAMPLE_DATA, &app_monitor_data.sample, sizeof(app_monitor_sample_t));
         }
         break;
     case APP_MONITOR_LOGGING_STATE_STOPPING:
-        app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_IDLE;
         IO_logger_close(IO_LOGGER_CHANNEL_SAMPLE_DATA);
+        app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_IDLE;
         break;
     default:
         break;
@@ -254,66 +261,92 @@ void app_monitor_private_processLogging()
 void app_monitor_init(int lock)
 {
     app_monitor_data.lock = lock;
-    // force_gauge_begin(&app_monitor_data.forceGauge, FORCE_GAUGE_RX, FORCE_GAUGE_TX);
-    encoder_start(&app_monitor_data.encoder, SERVO_ENCODER_A, SERVO_ENCODER_B, -1, false, 0, -100000, 100000);
-    dev_nvram_getChannelData(DEV_NVRAM_CHANNEL_MACHINE_PROFILE, &app_monitor_data.machineProfile, sizeof(MachineProfile));
     app_monitor_data.gaugeLength = 0;
     app_monitor_data.loggingState = APP_MONITOR_LOGGING_STATE_IDLE;
 }
 
 void app_monitor_run()
 {
-    app_monitor_private_stageRequests();
     app_monitor_private_processInputs();
+    app_monitor_private_processRequests();
     app_monitor_private_processSample();
     app_monitor_private_processLogging();
-
-    if (app_monitor_data.request.setGaugeLength)
-    {
-        app_monitor_data.gaugeLength = app_monitor_data.sample.position;
-        app_monitor_data.request.setGaugeLength = false;
-    }
-
-    app_monitor_private_stageSample();
-#ifdef __EMULATION__
-    _waitms(100);
-#endif
+    app_monitor_private_setOutput();
 }
 
 void app_monitor_getSample(app_monitor_sample_t *sample)
 {
     APP_MONITOR_LOCK_REQ_BLOCK();
-    memcpy(sample, &app_monitor_data.sampleOutput, sizeof(app_monitor_sample_t));
+    memcpy(sample, &app_monitor_data.out.sample, sizeof(app_monitor_sample_t));
     APP_MONITOR_LOCK_REL();
 }
 
-int32_t app_monitor_getForce(void)
+int32_t app_monitor_getSampleForce(void)
 {
     APP_MONITOR_LOCK_REQ_BLOCK();
-    int32_t force = app_monitor_data.sampleOutput.force;
+    int32_t force = app_monitor_data.out.sample.force;
     APP_MONITOR_LOCK_REL();
     return force;
 }
 
-int32_t app_monitor_getPosition(void)
+int32_t app_monitor_getSamplePosition(void)
 {
     APP_MONITOR_LOCK_REQ_BLOCK();
-    int32_t position = app_monitor_data.sampleOutput.position;
+    int32_t position = app_monitor_data.out.sample.position;
     APP_MONITOR_LOCK_REL();
     return position;
 }
 
-void app_monitor_setGaugeLength()
+int32_t app_monitor_getAbsoluteForce(void)
 {
     APP_MONITOR_LOCK_REQ_BLOCK();
-    app_monitor_data.stagedRequest.setGaugeLength = true;
+    int32_t force = app_monitor_data.out.force;
+    APP_MONITOR_LOCK_REL();
+    return force;
+}
+
+int32_t app_monitor_getAbsolutePosition(void)
+{
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    int32_t position = app_monitor_data.out.position;
+    APP_MONITOR_LOCK_REL();
+    return position;
+}
+
+int32_t app_monitor_getGaugeLength(void)
+{
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    int32_t gaugeLength = app_monitor_data.out.gaugeLength;
+    APP_MONITOR_LOCK_REL();
+    return gaugeLength;
+}
+
+void app_monitor_zeroGaugeLength()
+{
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    app_monitor_data.request.setGaugeLength = true;
     APP_MONITOR_LOCK_REL();
 }
 
-void app_monitor_setGaugeForce()
+void app_monitor_zeroGaugeForce()
 {
     APP_MONITOR_LOCK_REQ_BLOCK();
-    app_monitor_data.stagedRequest.setGaugeForce = true;
+    app_monitor_data.request.setGaugeForce = true;
+    APP_MONITOR_LOCK_REL();
+}
+
+void app_monitor_zeroPosition()
+{
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    app_monitor_data.request.zeroPositionFeedback = true;
+    APP_MONITOR_LOCK_REL();
+}
+
+void app_monitor_setTestName(const char *testName)
+{
+    APP_MONITOR_LOCK_REQ_BLOCK();
+    strncpy(app_monitor_data.testName, testName, sizeof(app_monitor_data.testName) - 1);
+    app_monitor_data.testName[sizeof(app_monitor_data.testName) - 1] = '\0';
     APP_MONITOR_LOCK_REL();
 }
 

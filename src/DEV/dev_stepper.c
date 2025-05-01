@@ -6,20 +6,14 @@
  **********************************************************************/
 #include "dev_stepper.h"
 
+#include "HAL_pulseOut.h"
 #include <propeller2.h>
 #include <smartpins.h>
 #include "IO_Debug.h"
 /**********************************************************************
  * Constants
  **********************************************************************/
-// I am thinking we use the same method as before
-// use waitx for slow moves and pulsecount for fast moves
-// the only difference is we have a run1us method
-// this requires we run at 100us :)
-// for 16 bit signal as max speed or 65535 steps.
-// with clockfreq of 180000000, we will need
-// 364 us per pulse.
-// this means dev_positionMotor should run in own cog.
+
 /*********************************************************************
  * Macros
  **********************************************************************/
@@ -39,13 +33,18 @@ typedef struct
 {
     int32_t targetSteps;
     uint32_t stepsPerSecond;
-    uint32_t clockCyclesPerStep;
 } dev_stepper_move_S;
 
 typedef struct
 {
     dev_stepper_move_S move;
     bool enabled;
+} dev_stepper_channelInput_S;
+
+typedef struct
+{
+    bool zeroPosition;
+    bool stop;
 } dev_stepper_channelRequest_S;
 
 typedef struct
@@ -56,7 +55,8 @@ typedef struct
 typedef struct
 {
     dev_stepper_channelRequest_S request;
-    dev_stepper_channelRequest_S stagedRequest;
+    dev_stepper_channelInput_S input;
+    dev_stepper_channelInput_S stagedInput;
     dev_stepper_channelOutput_S output;
     dev_stepper_channelOutput_S stagedOutput;
 
@@ -69,6 +69,7 @@ typedef struct
     int32_t startSteps;
     int32_t totalSteps;
     bool moveComplete;
+    bool directionCW;
 } dev_stepper_channelData_S;
 
 typedef struct
@@ -91,30 +92,27 @@ static dev_stepper_data_S dev_stepper_data;
 /**********************************************************************
  * Private Function Definitions
  **********************************************************************/
-//// HIIII RILEY TMRW, I need to make sure we consume the "staged" request into a single
-// move request by saving the target, speed etc. so we finish the move before it changes
-static void dev_stepper_private_hardwarePulse(dev_stepper_channel_E ch, uint32_t steps, uint32_t clockCyclesPerStep)
-{
-    _pinstart(dev_stepper_channelConfig[ch].pinStep, P_TRANSITION | P_OE, clockCyclesPerStep >> 1, 0);
-    _wypin(dev_stepper_channelConfig[ch].pinStep, steps);
-    dev_stepper_data.channels[ch].startx = _cnt();
-    dev_stepper_data.channels[ch].startSteps = dev_stepper_data.channels[ch].currentSteps;
-    dev_stepper_data.channels[ch].totalSteps = steps;
-}
 
-static int32_t dev_stepper_private_computeHardwarePulseCount(dev_stepper_channel_E ch)
-{
-    const int32_t deltaClockCycles = (_cnt() - dev_stepper_data.channels[ch].startx);
-    const int32_t deltaSteps = deltaClockCycles / dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep;
-    const int32_t deltaStepsLimited = deltaSteps > dev_stepper_data.channels[ch].totalSteps ? dev_stepper_data.channels[ch].totalSteps : deltaSteps;
-    const int32_t currentSteps = dev_stepper_data.channels[ch].startSteps + deltaStepsLimited;
-    return currentSteps;
-}
-
-static void dev_stepper_private_stageRequest(dev_stepper_channel_E ch)
+static void dev_stepper_private_processRequests(dev_stepper_channel_E ch)
 {
     SM_LOCK_REQ_BLOCK();
-    dev_stepper_data.channels[ch].stagedRequest = dev_stepper_data.channels[ch].request;
+    if (dev_stepper_data.channels[ch].request.zeroPosition)
+    {
+        dev_stepper_data.channels[ch].request.zeroPosition = false;
+        dev_stepper_data.channels[ch].currentSteps = 0;
+    }
+    if (dev_stepper_data.channels[ch].request.stop)
+    {
+        dev_stepper_data.channels[ch].request.stop = false;
+        dev_stepper_data.channels[ch].moveComplete = true;
+    }
+    SM_LOCK_REL();
+}
+
+static void dev_stepper_private_processInputs(dev_stepper_channel_E ch)
+{
+    SM_LOCK_REQ_BLOCK();
+    dev_stepper_data.channels[ch].input = dev_stepper_data.channels[ch].stagedInput;
     SM_LOCK_REL();
 }
 
@@ -128,40 +126,32 @@ static void dev_stepper_private_stageOutput(dev_stepper_channel_E ch)
 static dev_stepper_state_E dev_stepper_private_getDesiredState(dev_stepper_channel_E ch)
 {
     dev_stepper_state_E desiredState = dev_stepper_data.channels[ch].state;
-    const bool isMoveSlow = (dev_stepper_data.channels[ch].stagedRequest.move.clockCyclesPerStep < DEV_STEPPER_MIN_HARDWARE_SPEED);
     switch (dev_stepper_data.channels[ch].state)
     {
-    case DEV_STEPPER_STATE_INIT:
-        if (dev_stepper_data.channels[ch].stagedRequest.enabled)
+    case DEV_STEPPER_STATE_DISABLED:
+        if (dev_stepper_data.channels[ch].input.enabled)
         {
             desiredState = DEV_STEPPER_STATE_STOPPED;
         }
         break;
     case DEV_STEPPER_STATE_STOPPED:
-        if (dev_stepper_data.channels[ch].stagedRequest.enabled == false)
+        if (dev_stepper_data.channels[ch].input.enabled == false)
         {
-            desiredState = DEV_STEPPER_STATE_INIT;
+            desiredState = DEV_STEPPER_STATE_DISABLED;
         }
-        else if (dev_stepper_data.channels[ch].stagedRequest.move.targetSteps > dev_stepper_data.channels[ch].currentSteps)
+        else if (dev_stepper_data.channels[ch].input.move.targetSteps != dev_stepper_data.channels[ch].currentSteps)
         {
-            desiredState = isMoveSlow ? DEV_STEPPER_STATE_MOVING_SLOW_CW : DEV_STEPPER_STATE_MOVING_CW;
-        }
-        else if (dev_stepper_data.channels[ch].stagedRequest.move.targetSteps < dev_stepper_data.channels[ch].currentSteps)
-        {
-            desiredState = isMoveSlow ? DEV_STEPPER_STATE_MOVING_SLOW_CCW : DEV_STEPPER_STATE_MOVING_CCW;
+            desiredState = DEV_STEPPER_STATE_MOVING;
         }
         else
         {
             // At target
         }
         break;
-    case DEV_STEPPER_STATE_MOVING_CW:
-    case DEV_STEPPER_STATE_MOVING_CCW:
-    case DEV_STEPPER_STATE_MOVING_SLOW_CW:
-    case DEV_STEPPER_STATE_MOVING_SLOW_CCW:
-        if (dev_stepper_data.channels[ch].stagedRequest.enabled == false)
+    case DEV_STEPPER_STATE_MOVING:
+        if (dev_stepper_data.channels[ch].input.enabled == false)
         {
-            desiredState = DEV_STEPPER_STATE_INIT;
+            desiredState = DEV_STEPPER_STATE_DISABLED;
         }
         else if (dev_stepper_data.channels[ch].moveComplete)
         {
@@ -179,19 +169,13 @@ static void dev_stepper_private_exitAction(dev_stepper_channel_E ch)
 {
     switch (dev_stepper_data.channels[ch].state)
     {
-    case DEV_STEPPER_STATE_INIT:
+    case DEV_STEPPER_STATE_DISABLED:
         break;
     case DEV_STEPPER_STATE_STOPPED:
         break;
-    case DEV_STEPPER_STATE_MOVING_CW:
-        _pinclear(dev_stepper_channelConfig[ch].pinStep);
-        break;
-    case DEV_STEPPER_STATE_MOVING_CCW:
-        _pinclear(dev_stepper_channelConfig[ch].pinStep);
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CW:
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CCW:
+    case DEV_STEPPER_STATE_MOVING:
+        dev_stepper_data.channels[ch].moveComplete = true;
+        HAL_pulseOut_stop(dev_stepper_channelConfig[ch].pulseChannel);
         break;
     case DEV_STEPPER_STATE_COUNT:
     default:
@@ -203,31 +187,28 @@ static void dev_stepper_private_entryAction(dev_stepper_channel_E ch)
 {
     switch (dev_stepper_data.channels[ch].state)
     {
-    case DEV_STEPPER_STATE_INIT:
+    case DEV_STEPPER_STATE_DISABLED:
         break;
     case DEV_STEPPER_STATE_STOPPED:
         break;
-    case DEV_STEPPER_STATE_MOVING_CW:
+    case DEV_STEPPER_STATE_MOVING:
         dev_stepper_data.channels[ch].moveComplete = false;
-        dev_stepper_data.channels[ch].currentMove = dev_stepper_data.channels[ch].stagedRequest.move;
-        _pinl(dev_stepper_channelConfig[ch].pinDirection);
-        dev_stepper_private_hardwarePulse(ch, dev_stepper_data.channels[ch].currentMove.targetSteps - dev_stepper_data.channels[ch].currentSteps, dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep);
-        break;
-    case DEV_STEPPER_STATE_MOVING_CCW:
-        dev_stepper_data.channels[ch].moveComplete = false;
-        dev_stepper_data.channels[ch].currentMove = dev_stepper_data.channels[ch].stagedRequest.move;
-        _pinh(dev_stepper_channelConfig[ch].pinDirection);
-        dev_stepper_private_hardwarePulse(ch, dev_stepper_data.channels[ch].currentSteps - dev_stepper_data.channels[ch].currentMove.targetSteps, dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep);
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CW:
-        dev_stepper_data.channels[ch].moveComplete = false;
-        dev_stepper_data.channels[ch].currentMove = dev_stepper_data.channels[ch].stagedRequest.move;
-        _pinl(dev_stepper_channelConfig[ch].pinDirection);
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CCW:
-        dev_stepper_data.channels[ch].moveComplete = false;
-        dev_stepper_data.channels[ch].currentMove = dev_stepper_data.channels[ch].stagedRequest.move;
-        _pinh(dev_stepper_channelConfig[ch].pinDirection);
+        dev_stepper_data.channels[ch].currentMove = dev_stepper_data.channels[ch].input.move;
+        dev_stepper_data.channels[ch].startSteps = dev_stepper_data.channels[ch].currentSteps;
+        if (dev_stepper_data.channels[ch].input.move.targetSteps > dev_stepper_data.channels[ch].currentSteps)
+        {
+            // CW
+            dev_stepper_data.channels[ch].directionCW = true;
+            _pinl(dev_stepper_channelConfig[ch].pinDirection);
+            HAL_pulseOut_start(dev_stepper_channelConfig[ch].pulseChannel, (dev_stepper_data.channels[ch].input.move.targetSteps - dev_stepper_data.channels[ch].currentSteps), dev_stepper_data.channels[ch].currentMove.stepsPerSecond);
+        }
+        else
+        {
+            // CCW
+            dev_stepper_data.channels[ch].directionCW = false;
+            _pinh(dev_stepper_channelConfig[ch].pinDirection);
+            HAL_pulseOut_start(dev_stepper_channelConfig[ch].pulseChannel, (dev_stepper_data.channels[ch].currentSteps - dev_stepper_data.channels[ch].input.move.targetSteps), dev_stepper_data.channels[ch].currentMove.stepsPerSecond);
+        }
         break;
     case DEV_STEPPER_STATE_COUNT:
     default:
@@ -239,36 +220,24 @@ static void dev_stepper_private_runAction(dev_stepper_channel_E ch)
 {
     switch (dev_stepper_data.channels[ch].state)
     {
-    case DEV_STEPPER_STATE_INIT:
-        dev_stepper_data.channels[ch].output.ready = false;
+    case DEV_STEPPER_STATE_DISABLED:
+        dev_stepper_data.channels[ch].output.ready = true;
         break;
     case DEV_STEPPER_STATE_STOPPED:
         dev_stepper_data.channels[ch].output.ready = true;
         break;
-    case DEV_STEPPER_STATE_MOVING_CW:
-    case DEV_STEPPER_STATE_MOVING_CCW:
-        dev_stepper_data.channels[ch].moveComplete = (_pinr(dev_stepper_channelConfig[ch].pinStep) != 0);
-        dev_stepper_data.channels[ch].currentSteps = dev_stepper_private_computeHardwarePulseCount(ch);
+    case DEV_STEPPER_STATE_MOVING:
+    {
+        uint32_t deltaSteps = 0U;
+        dev_stepper_data.channels[ch].moveComplete = HAL_pulseOut_run(dev_stepper_channelConfig[ch].pulseChannel, &deltaSteps);
+        if (dev_stepper_data.channels[ch].directionCW == false)
+        {
+            deltaSteps = -deltaSteps;
+        }
+        dev_stepper_data.channels[ch].currentSteps = dev_stepper_data.channels[ch].startSteps + deltaSteps;
         dev_stepper_data.channels[ch].output.ready = true;
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CW:
-        _pinl(dev_stepper_channelConfig[ch].pinStep);
-        _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
-        _pinh(dev_stepper_channelConfig[ch].pinStep);
-        _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
-        dev_stepper_data.channels[ch].currentSteps++;
-        dev_stepper_data.channels[ch].moveComplete = (dev_stepper_data.channels[ch].currentSteps == dev_stepper_data.channels[ch].currentMove.targetSteps);
-        dev_stepper_data.channels[ch].output.ready = true;
-        break;
-    case DEV_STEPPER_STATE_MOVING_SLOW_CCW:
-        _pinl(dev_stepper_channelConfig[ch].pinStep);
-        _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
-        _pinh(dev_stepper_channelConfig[ch].pinStep);
-        _waitx(dev_stepper_data.channels[ch].currentMove.clockCyclesPerStep >> 1);
-        dev_stepper_data.channels[ch].currentSteps--;
-        dev_stepper_data.channels[ch].moveComplete = (dev_stepper_data.channels[ch].currentSteps == dev_stepper_data.channels[ch].currentMove.targetSteps);
-        dev_stepper_data.channels[ch].output.ready = true;
-        break;
+    }
+    break;
     case DEV_STEPPER_STATE_COUNT:
     default:
         dev_stepper_data.channels[ch].output.ready = false;
@@ -288,11 +257,14 @@ void dev_stepper_run()
 {
     for (dev_stepper_channel_E ch = (dev_stepper_channel_E)0U; ch < DEV_STEPPER_CHANNEL_COUNT; ch++)
     {
-        dev_stepper_private_stageRequest(ch);
+        dev_stepper_private_processRequests(ch);
+        dev_stepper_private_processInputs(ch);
         dev_stepper_state_E desiredState = dev_stepper_private_getDesiredState(ch);
         if (desiredState != dev_stepper_data.channels[ch].state)
         {
             DEBUG_INFO("Transitioning from %d -> %d\n", dev_stepper_data.channels[ch].state, desiredState);
+            DEBUG_INFO("Target: %d\n", dev_stepper_data.channels[ch].input.move.targetSteps);
+            DEBUG_INFO("Current: %d\n", dev_stepper_data.channels[ch].currentSteps);
             dev_stepper_private_exitAction(ch);
             dev_stepper_data.channels[ch].state = desiredState;
             dev_stepper_private_entryAction(ch);
@@ -304,19 +276,29 @@ void dev_stepper_run()
 
 bool dev_stepper_move(dev_stepper_channel_E ch, int32_t targetSteps, uint32_t stepsPerSecond)
 {
-    uint32_t clockCyclesPerStep = _clockfreq() / dev_stepper_data.channels[ch].request.move.stepsPerSecond;
+    if (stepsPerSecond == 0U)
+    {
+        return false;
+    }
     SM_LOCK_REQ_BLOCK();
-    dev_stepper_data.channels[ch].request.move.targetSteps = targetSteps;
-    dev_stepper_data.channels[ch].request.move.stepsPerSecond = stepsPerSecond;
-    dev_stepper_data.channels[ch].request.move.clockCyclesPerStep = clockCyclesPerStep;
+    dev_stepper_data.channels[ch].stagedInput.move.targetSteps = targetSteps;
+    dev_stepper_data.channels[ch].stagedInput.move.stepsPerSecond = stepsPerSecond;
     SM_LOCK_REL();
     return true;
+}
+
+void dev_stepper_stop(dev_stepper_channel_E ch)
+{
+    SM_LOCK_REQ_BLOCK();
+    dev_stepper_data.channels[ch].stagedInput.move.targetSteps = dev_stepper_data.channels[ch].currentSteps;
+    dev_stepper_data.channels[ch].request.stop = true;
+    SM_LOCK_REL();
 }
 
 void dev_stepper_enable(dev_stepper_channel_E ch, bool enabled)
 {
     SM_LOCK_REQ_BLOCK();
-    dev_stepper_data.channels[ch].request.enabled = enabled;
+    dev_stepper_data.channels[ch].stagedInput.enabled = enabled;
     SM_LOCK_REL();
 }
 
@@ -332,12 +314,12 @@ int32_t dev_stepper_getSteps(dev_stepper_channel_E ch)
 
 int32_t dev_stepper_getTarget(dev_stepper_channel_E ch)
 {
-    return dev_stepper_data.channels[ch].currentMove.targetSteps;
+    return dev_stepper_data.channels[ch].stagedInput.move.targetSteps;
 }
 
 bool dev_stepper_atTarget(dev_stepper_channel_E ch)
 {
-    return dev_stepper_data.channels[ch].request.move.targetSteps == dev_stepper_data.channels[ch].currentSteps;
+    return dev_stepper_data.channels[ch].stagedInput.move.targetSteps == dev_stepper_data.channels[ch].currentSteps;
 }
 
 bool dev_stepper_isReady(dev_stepper_channel_E ch)
@@ -347,6 +329,13 @@ bool dev_stepper_isReady(dev_stepper_channel_E ch)
     ready = dev_stepper_data.channels[ch].stagedOutput.ready;
     SM_LOCK_REL();
     return ready;
+}
+
+void dev_stepper_zeroPosition(dev_stepper_channel_E ch)
+{
+    SM_LOCK_REQ_BLOCK();
+    dev_stepper_data.channels[ch].request.zeroPosition = true;
+    SM_LOCK_REL();
 }
 
 /**********************************************************************

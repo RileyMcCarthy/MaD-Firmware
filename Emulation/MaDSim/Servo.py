@@ -26,24 +26,37 @@ class ServoDirection(AsyncHandler):
         self.direction = data[0]
 
 class Servo():
-    def __init__(self, step: GPIO, direction: GPIO, enc_a: GPIO, enc_b: GPIO):
+    def __init__(self, step: GPIO, direction: GPIO, enc_a: GPIO, enc_b: GPIO, endstop: GPIO):
         super().__init__()
         self.steps = 0
+        self.lastSteps = 0
         self.direction = 0
         step.set_rx_callback(self.increment_steps)
         direction.set_rx_callback(self.set_direction)
         self.enc_a = enc_a
         self.enc_b = enc_b
+        self.endstop = endstop
 
     def increment_steps(self, steps: bytes):
-        self.steps += steps[0]
-        if self.direction:
-            self.enc_a.set_state(0)
-            self.enc_b.set_state(1)
-        else:
-            self.enc_a.set_state(1)
-            self.enc_b.set_state(0)
-    
+        for step in steps:
+            if self.direction:
+                self.steps -= step
+                self.enc_a.set_state(0)
+                self.enc_b.set_state(step)
+            else:
+                self.steps += step
+                self.enc_a.set_state(step)
+                self.enc_b.set_state(0)
+        # this doesnt seem to work if number is not 0
+        if (self.lastSteps > -812000) and (self.steps <= -812000):
+            print("Endstop triggered")
+            self.endstop.set_state(1)
+        elif (self.lastSteps <= -812000) and (self.steps > -812000):
+            print("Endstop released")
+            self.endstop.set_state(0)
+        self.lastSteps = self.steps
+        #print(f"Servo: {self.steps}")
+
     def set_direction(self, dir):
         self.direction = dir[0]
 
