@@ -26,6 +26,7 @@ int main() {
 #else
 int main()
 {
+    printf("Booting MaD Firmware\n");
     mad_begin();
     while (1)
         ;

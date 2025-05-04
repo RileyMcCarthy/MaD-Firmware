@@ -24,6 +24,13 @@
  * Constants
  **********************************************************************/
 
+// Firmware version string - this will be set during build
+#ifdef FIRMWARE_VERSION
+  static const char* APP_MESSAGE_SLAVE_VERSION = FIRMWARE_VERSION;
+#else
+  static const char* APP_MESSAGE_SLAVE_VERSION = "0.0.0"; // development, no version set
+#endif
+
 /*********************************************************************
  * Macros
  **********************************************************************/
@@ -131,6 +138,14 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
                  app_message_slave_data.machineProfile.maxForceTensile);
         responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA;
         DEBUG_INFO("%s", "responding with machine profile\n");
+    }
+    break;
+    case IO_PROTOCOL_READ_TYPE_FIRMWARE_VERSION:
+    {
+        DEBUG_INFO("responding with firmware version: %s\n", APP_MESSAGE_SLAVE_VERSION);
+        snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
+                 "{\"version\":\"%s\"}", APP_MESSAGE_SLAVE_VERSION);
+        responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA;
     }
     break;
     case IO_PROTOCOL_READ_TYPE_COUNT:
