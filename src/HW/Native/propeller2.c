@@ -271,7 +271,7 @@ int _pinr(int pin)
             int bytes_received = 0;
             bytes_received = socketio_receive(__gpio[pin].socket_id, buffer, 1);
             __gpio[pin].state = buffer[0];
-            DEBUG_ERROR("Bytes received on pin %d: %d\n", pin, bytes_received);
+            DEBUG_INFO("Bytes received on pin %d: %d\n", pin, bytes_received);
         }
 
         // The last byte received is in buffer[0]

@@ -7,6 +7,7 @@
 #include "dev_forceGauge.h"
 #include "dev_nvram.h"
 #include "IO_Debug.h"
+#include <string.h>
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -130,7 +131,7 @@ static void dev_forceGauge_private_runAction(dev_forceGauge_channel_E channel)
         dev_forceGauge_data.channel[channel].output.ready = false;
         break;
     case DEV_FORCEGAUGE_STATE_RUNNING:
-        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100);
+        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100000);
         if (dev_forceGauge_data.channel[channel].input.rawADC > dev_forceGauge_data.channel[channel].nvram.zeroForceCount)
         {
             const int32_t nomalizedCount = dev_forceGauge_data.channel[channel].input.rawADC - dev_forceGauge_data.channel[channel].nvram.zeroForceCount;
@@ -146,7 +147,7 @@ static void dev_forceGauge_private_runAction(dev_forceGauge_channel_E channel)
         dev_forceGauge_data.channel[channel].output.ready = true;
         break;
     case DEV_FORCEGAUGE_STATE_ERROR:
-        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100);
+        dev_forceGauge_data.channel[channel].input.responding = IO_ADS122U04_receiveConversion(dev_forceGauge_channelConfig[channel].adcChannel, &dev_forceGauge_data.channel[channel].input.rawADC, 100000); // TODO this is huge, needed for sim but maybe not hardware
         dev_forceGauge_data.channel[channel].output.ready = false;
         break;
     default:
@@ -157,7 +158,7 @@ static void dev_forceGauge_private_runAction(dev_forceGauge_channel_E channel)
 static void dev_forceGauge_private_stageOutput(dev_forceGauge_channel_E channel)
 {
     DEV_FORCEGAUGE_REQ_BLOCK();
-    dev_forceGauge_data.channel[channel].stagedOutput = dev_forceGauge_data.channel[channel].output;
+    memcpy(&dev_forceGauge_data.channel[channel].stagedOutput, &dev_forceGauge_data.channel[channel].output, sizeof(dev_forceGauge_channelOutput_S));
     DEV_FORCEGAUGE_LOCK_REL();
 }
 

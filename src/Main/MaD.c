@@ -15,7 +15,7 @@ void mad_startupNVRAM(int dev_nvram_lock)
 {
   if (dev_nvram_lock == -1)
   {
-    printf("WARNING NO LOCKS AVAILABLE!!!, EXITING PROGRAM\n");
+    DEBUG_ERROR("%s", "WARNING NO LOCKS AVAILABLE!!!, EXITING PROGRAM\n");
     _waitms(1000);
     _reboot();
   }
@@ -23,7 +23,7 @@ void mad_startupNVRAM(int dev_nvram_lock)
   dev_nvram_init(dev_nvram_lock);
   if (dev_nvram_nosync_runUntilReady() == false)
   {
-    printf("WARNING NVRAM INIT FAILED!!!, EXITING PROGRAM\n");
+    DEBUG_ERROR("%s", "WARNING NVRAM INIT FAILED!!!, EXITING PROGRAM\n");
     _waitms(1000);
     _reboot();
   }
@@ -40,11 +40,13 @@ void mad_begin()
     _reboot();
   }
 
+  DEBUG_INFO("%s", "Starting MaD\n");
+
   // Start up nvram before everything else
   int criticalLock = _locknew();
   if (criticalLock == -1)
   {
-    printf("WARNING NO LOCKS AVAILABLE!!!, EXITING PROGRAM\n");
+    DEBUG_ERROR("%s", "WARNING NO LOCKS AVAILABLE!!!, EXITING PROGRAM\n");
     _waitms(1000);
     _reboot();
   }

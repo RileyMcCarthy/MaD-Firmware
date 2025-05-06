@@ -19,7 +19,7 @@ void socketio_send_str(int32_t socket_id, char *data)
     send(socket_id, data, strlen(data), 0);
 }
 
-void socketio_send_data(int32_t socket_id, uint8_t *data, uint16_t length)
+void socketio_send_data(int32_t socket_id, const uint8_t * const data, const uint32_t length)
 {
     // Send data to the server
     send(socket_id, data, length, 0);
@@ -98,15 +98,15 @@ bool socketio_poll(int32_t socket_id)
     }
 }
 
-int32_t socketio_receive(int32_t socket_id, uint8_t *data, uint16_t length)
+int32_t socketio_receiveTimeout(int32_t socket_id, uint8_t *data, uint32_t length, uint32_t timeout_us)
 {
     fd_set readfds;
     FD_ZERO(&readfds);
     FD_SET(socket_id, &readfds);
 
     struct timeval timeout;
-    timeout.tv_sec = 0; // Set the timeout to 10 second
-    timeout.tv_usec = 0;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = timeout_us;
 
     int ready = select(socket_id + 1, &readfds, NULL, NULL, &timeout);
 
@@ -131,6 +131,11 @@ int32_t socketio_receive(int32_t socket_id, uint8_t *data, uint16_t length)
         perror("Error in select");
         return 0;
     }
+}
+
+int32_t socketio_receive(int32_t socket_id, uint8_t *data, uint32_t length)
+{
+    return socketio_receiveTimeout(socket_id, data, length, 0);
 }
 
 void socketio_begin()

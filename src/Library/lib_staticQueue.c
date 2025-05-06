@@ -2,6 +2,7 @@
 #include <propeller2.h>
 #include <string.h>
 #include <stdio.h>
+#include "IO_Debug.h"
 
 bool lib_staticQueue_init(lib_staticQueue_S *queue, void *buf, int max_size, int item_size, int lock)
 {
@@ -18,7 +19,7 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
 {
     if (data == NULL)
     {
-        printf("lib_staticQueue_push: data is NULL\n");
+        DEBUG_ERROR("%s", "lib_staticQueue_push: data is NULL\n");
         return false;
     }
 
@@ -29,7 +30,7 @@ bool lib_staticQueue_push(lib_staticQueue_S *queue, void *data)
 
     if (lib_staticQueue_isfull(queue))
     {
-        printf("lib_staticQueue_push: data is FULL\n");
+        DEBUG_ERROR("%s", "lib_staticQueue_push: data is FULL\n");
         _lockrel(queue->lock);
         exit(1);
         return false;

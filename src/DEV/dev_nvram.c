@@ -314,7 +314,6 @@ void dev_nvram_run()
         dev_nvram_state_t desiredState = dev_nvram_private_getDesiredState(channel);
         if (desiredState != dev_nvram_data.channels[channel].state)
         {
-            printf("Chanigng state: %d->%d\n", dev_nvram_data.channels[channel].state, desiredState);
             dev_nvram_private_exitAction(channel);
             dev_nvram_data.channels[channel].state = desiredState;
             dev_nvram_private_entryAction(channel);

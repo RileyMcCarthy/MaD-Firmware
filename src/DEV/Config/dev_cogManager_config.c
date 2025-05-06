@@ -21,6 +21,7 @@
 #include "dev_nvram.h"
 
 #include "IO_protocol.h"
+#include "IO_fullDuplexSerial.h"
 
 #include "watchdog.h"
 #include "IO_Debug.h"
@@ -140,6 +141,22 @@ DEV_COGMANAGER_CHANNEL_CREATE_RUN(FORCEGAUGE)
     }
 }
 
+DEV_COGMANAGER_CHANNEL_CREATE_INIT(FULLDUPLEXSERIAL, 1024)
+{
+    DEBUG_INFO("%s", "Serial cog initializing\n");
+    IO_fullDuplexSerial_init(lock);
+}
+
+DEV_COGMANAGER_CHANNEL_CREATE_RUN(FULLDUPLEXSERIAL)
+{
+    DEBUG_INFO("%s", "Serial cog running\n");
+    while (1)
+    {
+        IO_fullDuplexSerial_run();
+        watchdog_kick(WATCHDOG_CHANNEL_SERIAL);
+    }
+}
+
 const dev_cogManager_config_S dev_cogManager_config = {
     {
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(MONITOR),
@@ -148,6 +165,7 @@ const dev_cogManager_config_S dev_cogManager_config = {
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(CONTROL),
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(LOGGER),
         DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(FORCEGAUGE),
+        DEV_COGMANAGER_CHANNEL_CONFIG_CREATE(FULLDUPLEXSERIAL),
     },
 };
 /**********************************************************************

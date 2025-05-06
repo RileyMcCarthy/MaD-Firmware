@@ -30,5 +30,8 @@ typedef enum
 
     HW_PIN_RPI_RX = 53,
     HW_PIN_RPI_TX = 55,
+
+    HW_PIN_MAIN_RX = 63,
+    HW_PIN_MAIN_TX = 62,
 } HW_pin_E;
 #endif /* HW_PINS_H */

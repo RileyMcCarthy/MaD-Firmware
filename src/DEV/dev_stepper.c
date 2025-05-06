@@ -10,6 +10,7 @@
 #include <propeller2.h>
 #include <smartpins.h>
 #include "IO_Debug.h"
+#include <string.h>
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -112,7 +113,7 @@ static void dev_stepper_private_processRequests(dev_stepper_channel_E ch)
 static void dev_stepper_private_processInputs(dev_stepper_channel_E ch)
 {
     SM_LOCK_REQ_BLOCK();
-    dev_stepper_data.channels[ch].input = dev_stepper_data.channels[ch].stagedInput;
+    memcpy(&dev_stepper_data.channels[ch].input, &dev_stepper_data.channels[ch].stagedInput, sizeof(dev_stepper_channelInput_S));
     SM_LOCK_REL();
 }
 

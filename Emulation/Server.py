@@ -81,7 +81,8 @@ sample = MaDSim.TestSample(servo, forceGauge)
 rpi_pin = 53
 #rpi_serial = MaDSim.VirtualSerialPort("rpi_client", "rpi") #run it manually, its easier lol
 rpi_async_serial_server = MaDSim.AsyncSerialServer("rpi_client")
-MaDSim.AsyncConnector(rpi_async_serial_server, async_server[53])
+MaDSim.AsyncConectorSingle(rpi_async_serial_server, async_server[53])
+MaDSim.AsyncConectorSingle(async_server[55], rpi_async_serial_server)
 #rpi_serial.start()
 rpi_async_serial_server.run()
 

@@ -14,6 +14,8 @@
 /**********************************************************************
  * Constants
  **********************************************************************/
+
+#define IO_ADS122U04_TIMEOUT_US 10000U
 #define IO_ADS122U04_SYNC 0x55
 #define IO_ADS122U04_CMD_RESET 0x06
 #define IO_ADS122U04_CMD_START 0x08
@@ -234,7 +236,7 @@ static bool IO_ADS122U04_readRegister(IO_ADS122U04_channel_E channel, IO_ADS122U
 {
     const uint8_t package[2] = {IO_ADS122U04_SYNC, 0x20 + (registerAddress << 1)};
     HAL_serial_transmitData(IO_ADS122U04_channelConfig[channel].serialChannel, package, 2);
-    return HAL_serial_recieveDataTimeout(IO_ADS122U04_channelConfig[channel].serialChannel, data, 1, 100);
+    return HAL_serial_recieveDataTimeout(IO_ADS122U04_channelConfig[channel].serialChannel, data, 1, IO_ADS122U04_TIMEOUT_US);
 }
 
 static void IO_ADS122U04_sendCommand(IO_ADS122U04_channel_E channel, uint8_t command)

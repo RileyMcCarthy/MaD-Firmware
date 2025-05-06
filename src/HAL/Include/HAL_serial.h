@@ -18,7 +18,9 @@
 /*********************************************************************
  * Macros
  **********************************************************************/
-
+#ifndef ENABLE_DEBUG_SERIAL
+#define ENABLE_DEBUG_SERIAL 0
+#endif
 /**********************************************************************
  * Typedefs
  **********************************************************************/
@@ -26,6 +28,7 @@
 typedef enum
 {
     HAL_SERIAL_CHANNEL_FORCE_GAUGE,
+    HAL_SERIAL_CHANNEL_MAIN,
     HAL_SERIAL_CHANNEL_COUNT,
 } HAL_serial_channel_E;
 
@@ -38,8 +41,9 @@ typedef enum
 
 void HAL_serial_start(HAL_serial_channel_E channel);
 void HAL_serial_stop(HAL_serial_channel_E channel);
-bool HAL_serial_recieveDataTimeout(HAL_serial_channel_E channel, uint8_t *const data, uint8_t len, uint32_t timeout_us);
-void HAL_serial_transmitData(HAL_serial_channel_E channel, const uint8_t *const data, const uint8_t len);
+bool HAL_serial_recieveDataTimeout(HAL_serial_channel_E channel, uint8_t *const data, uint32_t len, uint32_t timeout_us);
+void HAL_serial_transmitData(HAL_serial_channel_E channel, const uint8_t *const data, const uint32_t len);
+bool HAL_serial_recieveByte(HAL_serial_channel_E channel, uint8_t *const data);
 /**********************************************************************
  * End of File
  **********************************************************************/

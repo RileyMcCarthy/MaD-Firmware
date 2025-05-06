@@ -4,14 +4,12 @@
 /**********************************************************************
  * Includes
  **********************************************************************/
-#include <string.h>
-
 #include "IO_protocol.h"
-#include "FullDuplexSerial.h"
-#include "HW_pins.h"
+#include "IO_Debug.h"
+#include "IO_fullDuplexSerial.h"
 #include "lib_utility.h"
 #include <propeller2.h>
-#include "IO_Debug.h"
+#include <string.h>
 /**********************************************************************
  * Constants
  **********************************************************************/
@@ -48,7 +46,6 @@ typedef struct
 
 typedef struct
 {
-    FullDuplexSerial fds;
     IO_protocol_recieve_S recieve;
 } IO_protocol_data_S;
 /**********************************************************************
@@ -74,13 +71,7 @@ static bool IO_protocol_private_timeout(void)
 
 static bool IO_protocol_private_recieveByte(uint8_t *byte)
 {
-    bool ret = false;
-    if (fds_avilable(&IO_protocol_data.fds) > 0)
-    {
-        *byte = fds_rx(&IO_protocol_data.fds);
-        ret = true;
-    }
-    return ret;
+    return IO_fullDuplexSerial_receive(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, byte, 1U);;
 }
 
 bool IO_protocol_private_recieveSync()
@@ -100,7 +91,6 @@ bool IO_protocol_private_recieveSync()
 
 void IO_protocol_init()
 {
-    fds_start(&IO_protocol_data.fds, HW_PIN_RPI_RX, HW_PIN_RPI_TX, 0, 115200);
 }
 
 IO_protocol_incommingType_E IO_protocol_recieveRequest(IO_protocol_readType_E *readType, IO_protocol_writeType_E *writeType, void *data, uint32_t *size, const uint16_t maxSize)
@@ -145,7 +135,7 @@ IO_protocol_incommingType_E IO_protocol_recieveRequest(IO_protocol_readType_E *r
         }
         break;
     case IO_PROTOCOL_RECIEVE_STATE_LENGTH:
-        if (fds_avilable(&IO_protocol_data.fds) > 2U)
+        if (IO_fullDuplexSerial_available(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN) > 2U)
         {
             uint8_t bytes[2];
             bool recieveSuccess = IO_protocol_private_recieveByte(&bytes[0]);
@@ -171,7 +161,7 @@ IO_protocol_incommingType_E IO_protocol_recieveRequest(IO_protocol_readType_E *r
         }
         break;
     case IO_PROTOCOL_RECIEVE_STATE_DATA:
-        while (fds_avilable(&IO_protocol_data.fds) > 0)
+        while (IO_fullDuplexSerial_available(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN) > 0)
         {
             const uint16_t index = LIB_UTILITY_LIMIT(IO_protocol_data.recieve.dataIndex, 0U, maxSize);
             if (IO_protocol_private_recieveByte(&data[index]))
@@ -216,56 +206,36 @@ IO_protocol_incommingType_E IO_protocol_recieveRequest(IO_protocol_readType_E *r
 
 bool IO_protocol_respondNACK(IO_protocol_writeType_E originalRequest)
 {
-    bool ret = true;
-    fds_tx(&IO_protocol_data.fds, 0x55);
-    fds_tx(&IO_protocol_data.fds, IO_PROTOCOL_OUTGOING_TYPE_NACK);
-    fds_tx(&IO_protocol_data.fds, originalRequest);
-    return ret;
+    const uint8_t data[3] = {0x55, IO_PROTOCOL_OUTGOING_TYPE_NACK, originalRequest};
+    return IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, data, 3U);
 }
 
 bool IO_protocol_respondACK(IO_protocol_writeType_E originalRequest)
 {
-    bool ret = true;
-    fds_tx(&IO_protocol_data.fds, 0x55);
-    fds_tx(&IO_protocol_data.fds, IO_PROTOCOL_OUTGOING_TYPE_ACK);
-    fds_tx(&IO_protocol_data.fds, originalRequest);
-    return ret;
+    const uint8_t data[3] = {0x55, IO_PROTOCOL_OUTGOING_TYPE_ACK, originalRequest};
+    return IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, data, 3U);
 }
 
 bool IO_protocol_respondData(IO_protocol_readType_E originalRequest, uint8_t *data, uint16_t size)
 {
     bool ret = true;
-    fds_tx(&IO_protocol_data.fds, 0x55);
-    fds_tx(&IO_protocol_data.fds, IO_PROTOCOL_OUTGOING_TYPE_DATA);
-    fds_tx(&IO_protocol_data.fds, originalRequest);
-    fds_tx(&IO_protocol_data.fds, size);
-    fds_tx(&IO_protocol_data.fds, size >> 8);
 
-    for (int i = 0; i < size; i++)
-    {
-        fds_tx(&IO_protocol_data.fds, data[i]);
-    }
-    uint8_t crc = lib_utility_CRC8((uint8_t *)data, size);
-    fds_tx(&IO_protocol_data.fds, crc);
+    const uint8_t header[5] = {0x55, IO_PROTOCOL_OUTGOING_TYPE_DATA, originalRequest, size, size >> 8};
+    const uint8_t crc = lib_utility_CRC8((uint8_t *)data, size);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, header, 5U);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, data, size);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, &crc, 1U);
     return ret;
 }
 
 bool IO_protocol_sendNotification(uint8_t *data, uint16_t size)
 {
-    // need to figure out how to make this have same structure as respondData. I feel like it might be easier
-    // also notifcations arent working, due to missing originalRequest. this causes the read byte to be large and stall UI recieving
     bool ret = true;
-    fds_tx(&IO_protocol_data.fds, 0x55);
-    fds_tx(&IO_protocol_data.fds, IO_PROTOCOL_OUTGOING_TYPE_NOTIFICATION);
-    fds_tx(&IO_protocol_data.fds, 0); // this is a hack, dont hate me
-    fds_tx(&IO_protocol_data.fds, size);
-    fds_tx(&IO_protocol_data.fds, size >> 8);
-    for (int i = 0; i < size; i++)
-    {
-        fds_tx(&IO_protocol_data.fds, data[i]);
-    }
-    uint8_t crc = lib_utility_CRC8((uint8_t *)data, size);
-    fds_tx(&IO_protocol_data.fds, crc);
+    const uint8_t header[5] = {0x55, IO_PROTOCOL_OUTGOING_TYPE_NOTIFICATION, 0, size, size >> 8};
+    const uint8_t crc = lib_utility_CRC8((uint8_t *)data, size);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, header, 5U);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, data, size);
+    ret &= IO_fullDuplexSerial_send(IO_FULLDUPLEXSERIAL_CHANNEL_MAIN, &crc, 1U);
     return ret;
 }
 

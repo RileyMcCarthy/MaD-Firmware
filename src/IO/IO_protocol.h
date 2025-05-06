@@ -69,11 +69,6 @@ IO_protocol_incommingType_E IO_protocol_recieveRequest(IO_protocol_readType_E *r
 bool IO_protocol_respondNACK(IO_protocol_writeType_E originalRequest);
 bool IO_protocol_respondACK(IO_protocol_writeType_E originalRequest);
 bool IO_protocol_respondData(IO_protocol_readType_E originalRequest, uint8_t *data, uint16_t size);
-
-// hi riley, next thing to do is figure out how to handle responses using split read/write
-// might make sense to have ack/nack use writeType and respondData always use ready type. Seems simple enough
-
-// might wanna make this something more generic like
 bool IO_protocol_sendNotification(uint8_t *data, uint16_t size);
 /**********************************************************************
  * End of File

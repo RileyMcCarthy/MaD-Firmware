@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "app_motion.h"
-
+// should really be a library
 /**
  * @brief Decodes a G-code string into a motion move structure
  *

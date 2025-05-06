@@ -36,6 +36,9 @@
 
 #define LIB_UTILITY_LIMIT(value, lower, upper) ((((value < lower) ? lower : value) > upper) ? upper : value)
 
+#define LIB_UTILITY_MIN(a, b) ((a) < (b) ? (a) : (b))
+#define LIB_UTILITY_MAX(a, b) ((a) > (b) ? (a) : (b))
+
 /*********************************************************************
  * Macros
  **********************************************************************/
