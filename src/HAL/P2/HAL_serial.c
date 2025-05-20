@@ -160,8 +160,16 @@ void HAL_serial_stop(HAL_serial_channel_E channel)
     if (channel < HAL_SERIAL_CHANNEL_COUNT)
     {
         // turn off the smartpin
-        _pinclear(HAL_serial_channelConfig[channel].rx);
-        _pinclear(HAL_serial_channelConfig[channel].tx);
+        switch(HAL_serial_channelConfig[channel].type)
+        {
+            case HAL_SERIAL_TYPE_HARDWARE:
+                _pinclear(HAL_serial_channelConfig[channel].rx);
+                _pinclear(HAL_serial_channelConfig[channel].tx);
+                break;
+            case HAL_SERIAL_TYPE_BUILTIN:
+                // do not disable the serial port
+                break;
+        }
     }
 }
 
@@ -169,7 +177,7 @@ void HAL_serial_transmitData(HAL_serial_channel_E channel, const uint8_t *const 
 {
     if (channel < HAL_SERIAL_CHANNEL_COUNT)
     {
-        for (uint8_t i = 0; i < len; i++)
+        for (uint32_t i = 0; i < len; i++)
         {
             HAL_serial_private_writeByte(channel, data[i]);
             // wait for the byte to be sent
@@ -183,13 +191,13 @@ bool HAL_serial_recieveDataTimeout(HAL_serial_channel_E channel, uint8_t *const 
     if ((channel < HAL_SERIAL_CHANNEL_COUNT) && (data != NULL))
     {
         // wait for the byte to be received
-        const int32_t startTime = _getms();
+        const int32_t startTime = _getus();
         for (uint32_t i = 0; i < len; i++)
         {
             uint8_t byte = 0U;
             while (HAL_serial_recieveByte(channel, &byte) == false)
             {
-                if ((_getms() - startTime) > timeout_us)
+                if ((_getus() - startTime) > timeout_us)
                 {
                     return false;
                 }

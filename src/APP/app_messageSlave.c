@@ -74,7 +74,7 @@ typedef struct
 /**********************************************************************
  * Private Variable Definitions
  **********************************************************************/
-app_message_slave_data_S app_message_slave_data;
+static app_message_slave_data_S app_message_slave_data;
 /**********************************************************************
  * Private Function Prototypes
  **********************************************************************/
@@ -86,6 +86,7 @@ app_message_slave_data_S app_message_slave_data;
 static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_protocol_readType_E readType)
 {
     app_message_slave_responseType_E responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_NONE;
+    int32_t dataSize = 0;
     switch (readType)
     {
     case IO_PROTOCOL_READ_TYPE_SAMPLE:
@@ -96,7 +97,7 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
         const int32_t machineSetpoint = app_motion_getSetpoint();
         const int32_t machineForce = dev_forceGauge_getForce(DEV_FORCEGAUGE_CHANNEL_MAIN);
 
-        snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
+        dataSize = snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
                  "{\"Machine Force (N)\":%0.3f,\"Machine Position (mm)\":%d,\"Machine Setpoint (mm)\":%d,\"Sample Force (N)\":%0.3f,\"Sample Position (mm)\":%d,\"Index\":%u}",
                  LIB_UTILITY_MN_TO_N(machineForce), machinePosition, LIB_UTILITY_UM_TO_MM(machineSetpoint), LIB_UTILITY_MN_TO_N(sample.force), LIB_UTILITY_UM_TO_MM(sample.position), sample.index);
         responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA;
@@ -108,7 +109,7 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
         const app_control_restriction_E restrictedReason = app_control_getRestriction();
         const bool testRunning = app_control_testRunning();
         const bool motionEnabled = app_control_motionEnabled();
-        snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
+        dataSize = snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
                  "{\"faultedReason\":%d,\"restrictedReason\":%d,\"testRunning\":%d,\"motionEnabled\":%d}",
                  faultedReason, restrictedReason, testRunning, motionEnabled);
         responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA;
@@ -117,7 +118,7 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
     case IO_PROTOCOL_READ_TYPE_MACHINE_CONFIGURATION:
     {
         // Respond with current nvram machine profile
-        snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
+        dataSize = snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
                  "{\"Name\":\"%s\",\
                 \"Encoder (step/mm)\":%d,\
                 \"Servo (step/mm)\":%d,\
@@ -143,7 +144,7 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
     case IO_PROTOCOL_READ_TYPE_FIRMWARE_VERSION:
     {
         DEBUG_INFO("responding with firmware version: %s\n", APP_MESSAGE_SLAVE_VERSION);
-        snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
+        dataSize = snprintf(app_message_slave_data.dataTX, APP_MESSAGE_SLAVE_TX_BUFFER_SIZE,
                  "{\"version\":\"%s\"}", APP_MESSAGE_SLAVE_VERSION);
         responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA;
     }
@@ -152,6 +153,24 @@ static app_message_slave_responseType_E app_message_slave_private_handleRead(IO_
     default:
         break;
     }
+
+    if (dataSize > APP_MESSAGE_SLAVE_TX_BUFFER_SIZE)
+    {
+        DEBUG_ERROR("data size is too large: %d\n", dataSize);
+        responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_NACK;
+        app_message_slave_data.dataTX[0] = '\0';
+    }
+    else if (dataSize < 0)
+    {
+        DEBUG_ERROR("data size is negative: %d\n", dataSize);
+        responseType = APP_MESSAGE_SLAVE_RESPONSE_TYPE_NACK;
+        app_message_slave_data.dataTX[0] = '\0';
+    }
+    else
+    {
+        // DEBUG_INFO("data size is valid: %d\n", dataSize);
+    }
+    app_message_slave_data.dataTX[APP_MESSAGE_SLAVE_TX_BUFFER_SIZE - 1] = '\0';
     return responseType;
 }
 
@@ -342,7 +361,7 @@ static void app_message_slave_private_handleIncomming()
     default:
         break;
     }
-
+    const uint16_t len = LIB_UTILITY_LIMIT(strlen(app_message_slave_data.dataTX), 0, 65535);
     switch (responseType)
     {
     case APP_MESSAGE_SLAVE_RESPONSE_TYPE_ACK:
@@ -352,7 +371,7 @@ static void app_message_slave_private_handleIncomming()
         IO_protocol_respondNACK(writeType);
         break;
     case APP_MESSAGE_SLAVE_RESPONSE_TYPE_DATA:
-        IO_protocol_respondData(readType, (uint8_t *)app_message_slave_data.dataTX, strlen(app_message_slave_data.dataTX));
+        IO_protocol_respondData(readType, (uint8_t *)app_message_slave_data.dataTX, len);
         break;
     case APP_MESSAGE_SLAVE_RESPONSE_TYPE_NONE:
     default:

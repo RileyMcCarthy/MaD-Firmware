@@ -23,9 +23,7 @@ void mad_startupNVRAM(int dev_nvram_lock)
   dev_nvram_init(dev_nvram_lock);
   if (dev_nvram_nosync_runUntilReady() == false)
   {
-    DEBUG_ERROR("%s", "WARNING NVRAM INIT FAILED!!!, EXITING PROGRAM\n");
-    _waitms(1000);
-    _reboot();
+    DEBUG_ERROR("%s", "WARNING NVRAM INIT FAILED!!!, Using failsafe records\n");
   }
 }
 

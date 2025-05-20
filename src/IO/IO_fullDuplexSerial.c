@@ -97,7 +97,7 @@ bool IO_fullDuplexSerial_send(IO_fullDuplexSerial_channel_E channel, const uint8
     if (channel < IO_FULLDUPLEXSERIAL_CHANNEL_COUNT)
     {
         IO_FULLDUPLEXSERIAL_LOCK_REQ_BLOCK();
-        if (IO_fullDuplexSerial_data.channel[channel].txBufferIndex + length < IO_fullDuplexSerial_channelConfig[channel].txBufferSize)
+        if ((IO_fullDuplexSerial_data.channel[channel].txBufferIndex + length) < IO_fullDuplexSerial_channelConfig[channel].txBufferSize)
         {
             memcpy(&IO_fullDuplexSerial_channelConfig[channel].txBuffer[IO_fullDuplexSerial_data.channel[channel].txBufferIndex], data, length);
             IO_fullDuplexSerial_data.channel[channel].txBufferIndex += length;
@@ -106,6 +106,7 @@ bool IO_fullDuplexSerial_send(IO_fullDuplexSerial_channel_E channel, const uint8
         else
         {
             // TODO: Handle overflow
+            DEBUG_ERROR("Overflow on channel %d\n", channel);
         }
         IO_FULLDUPLEXSERIAL_LOCK_REL();
     }
