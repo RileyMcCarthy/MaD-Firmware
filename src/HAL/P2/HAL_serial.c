@@ -35,6 +35,7 @@ typedef struct
     const HW_pin_E tx;
     const int32_t baud;
     const HAL_serial_type_E type;
+    bool LSB;
 } HAL_serial_channelConfig_S;
 
 /**********************************************************************
@@ -45,12 +46,12 @@ typedef struct
  * Private Variable Definitions
  **********************************************************************/
 static HAL_serial_channelConfig_S HAL_serial_channelConfig[HAL_SERIAL_CHANNEL_COUNT] = {
-    {HW_PIN_FORCE_GAUGE_RX, HW_PIN_FORCE_GAUGE_TX, 115200, HAL_SERIAL_TYPE_HARDWARE}, // FORCE_GAUGE
+    {HW_PIN_FORCE_GAUGE_RX, HW_PIN_FORCE_GAUGE_TX, 115200, HAL_SERIAL_TYPE_HARDWARE, false}, // FORCE_GAUGE
 #if ENABLE_DEBUG_SERIAL
     // leave the MAIN_RX and MAIN_TX open for debug serial
-    {HW_PIN_RPI_RX, HW_PIN_RPI_TX, 230400, HAL_SERIAL_TYPE_HARDWARE}, // MAIN
+    {HW_PIN_RPI_RX, HW_PIN_RPI_TX, 230400, HAL_SERIAL_TYPE_HARDWARE, false}, // MAIN
 #else
-    {HW_PIN_MAIN_RX, HW_PIN_MAIN_TX, 230400, HAL_SERIAL_TYPE_BUILTIN}, // MAIN
+    {HW_PIN_MAIN_RX, HW_PIN_MAIN_TX, 230400, HAL_SERIAL_TYPE_BUILTIN, false}, // MAIN
 #endif
 };
 /**********************************************************************
@@ -109,6 +110,11 @@ static inline bool HAL_serial_private_readByte(HAL_serial_channel_E channel, uin
 
 static inline void HAL_serial_private_writeByte(HAL_serial_channel_E channel, uint8_t byte)
 {
+    if (HAL_serial_channelConfig[channel].LSB)
+    {
+        // P2 sends MSB first, if LSB is true, we need to swap the bits
+        byte = (__builtin_bitreverse32(byte) >> 24) & 0xFF;
+    }
     switch (HAL_serial_channelConfig[channel].type)
     {
         case HAL_SERIAL_TYPE_HARDWARE:
